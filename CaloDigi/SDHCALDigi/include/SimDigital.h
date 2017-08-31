@@ -39,12 +39,18 @@
 #include "DDRec/API/Calorimeter.h"
 #include "DDRec/DetectorSurfaces.h"
 
+#include "SimDigitalGeom.h"
+#include "ChargeSpreader.h"
+#include "ChargeInducer.h"
+#include "EfficiencyManager.h"
+
 class TH1F;
 class TF1;
 class TTree;
 
-namespace AIDA {
-  class ITuple;
+namespace AIDA
+{
+class ITuple ;
 }
 
 using namespace lcio ;
@@ -67,349 +73,190 @@ using namespace marlin ;
 
 
 
-class SimDigitalGeomRPCFrame;
+class SimDigitalGeomRPCFrame ;
 
 struct StepAndCharge
 {
-  StepAndCharge() : step(), charge(0) {}
-  StepAndCharge(LCVector3D vec) : step(vec), charge(0) {}
-  LCVector3D step;
-  float charge;
-};
+		StepAndCharge()
+			: step()
+		{}
+		StepAndCharge(LCVector3D vec)
+			: step(vec)
+		{}
+		LCVector3D step ;
+		double charge = 0 ;
+} ;
 
-
-//helper class to manage cellId and local geometry
-const int ENCODINGTYPES        = 2;
-const int ENCODINGSTRINGLENGTH = 6;
-
-class SimDigitalGeomCellId 
+struct AsicKey
 {
- public:
-  static void bookTuples(const marlin::Processor* proc);
-  SimDigitalGeomCellId(LCCollection *inputCol, LCCollectionVec *outputCol);
-  ~SimDigitalGeomCellId();
-  //return the list of step positions in coordinates corresponding to 'I' ,'J' and 'layer'
-  std::vector<StepAndCharge> decode(SimCalorimeterHit *hit);
-  void encode(CalorimeterHitImpl *hit,int delta_I, int delta_J);
-  void setLayerLayout( CHT::Layout layout);
-  static void setEncodingType(std::string type);
-  static void setHcalOption(std::string hcalOption);
-  float getCellSize();
-  const LCVector3D& normalToRPCPlane() {return _normal;}
-  const LCVector3D& Iaxis() {return _Iaxis;}
-  const LCVector3D& Jaxis() {return _Jaxis;}
+		AsicKey(int l , int aI = -1 , int aJ = -1) : layerID(l) , asicI(aI) , asicJ(aJ) {}
+		int layerID ;
+		int asicI ;
+		int asicJ ;
 
-  int I() {return _Iy;}
-  int J() {return _Jz;}
-  int K() {return _trueLayer;}
-  int stave() {return _stave;}
-  int module() {return _module;}
-  int tower() {return _tower;}
+		bool operator<(const AsicKey& b) const
+		{
+			if ( this->layerID != b.layerID )
+				return this->layerID < b.layerID ;
+			else if ( this->asicI != b.asicI )
+				return this->asicI < b.asicI ;
+			else
+				return this->asicJ < b.asicJ ;
+		}
+		bool operator==(const AsicKey& b) const
+		{
+			return ( this->layerID == b.layerID ) && ( this->asicI == b.asicI ) && ( this->asicJ == b.asicJ ) ;
+		}
 
- private:
-  enum HCAL_GEOM {VIDEAU,TESLA};
-  HCAL_GEOM _geom;
-  int _trueLayer;
-  int _stave;
-  int _module;
-  int _tower;
-  int _Iy;
-  int _Jz;
-  dd4hep::long64 _cellIDvalue;
-  static int _encodingType;
-  static std::string _hcalOption;
-  const float* _hitPosition; 
-  CellIDDecoder<SimCalorimeterHit> _decoder;
-  CellIDEncoder<CalorimeterHitImpl> _encoder;
-  const gear::LayerLayout* _layerLayout;
-  dd4hep::rec::LayeredCalorimeterData* _caloData;
-  dd4hep::DetElement theDetector;
-
-  SimDigitalGeomRPCFrame* _normal_I_J_setter;
-  CHT::Layout _currentHCALCollectionCaloLayout;
-  LCVector3D _normal;
-  LCVector3D _Iaxis;
-  LCVector3D _Jaxis;
-  static AIDA::ITuple* _tupleHit;
-  enum {TH_DETECTOR,TH_CHTLAYOUT,TH_MODULE,TH_TOWER,TH_STAVE,TH_LAYER,TH_I,TH_J,
-	TH_X,TH_Y,TH_Z,
-	TH_NORMALX,TH_NORMALY,TH_NORMALZ,
-	TH_IX,TH_IY,TH_IZ,
-	TH_JX,TH_JY,TH_JZ};
-  static AIDA::ITuple* _tupleStep;
-  enum {TS_DETECTOR,TS_CHTLAYOUT,TS_HITCELLID,TS_NSTEP,
-	TS_HITX,TS_HITY,TS_HITZ,
-	TS_STEPX,TS_STEPY,TS_STEPZ,
-	TS_DELTAI,TS_DELTAJ,TS_DELTALAYER};
-
-  static std::string _encodingStrings[ENCODINGTYPES][ENCODINGSTRINGLENGTH];
-
-  std::string _cellIDEncodingString;
-
-  bool _useGear;
-
-  friend class SimDigitalGeomRPCFrame;
-};
+} ;
 
 
 
-//hierarchy of classes to determine the RPC reference frame 
-class SimDigitalGeomRPCFrame 
+
+class SimDigital : public Processor
 {
- public:
-  SimDigitalGeomRPCFrame(SimDigitalGeomCellId& h) : _layerInfo(h) {;}
-  virtual ~SimDigitalGeomRPCFrame() {}  
-  virtual void setRPCFrame()=0;
- private:
-  SimDigitalGeomCellId& _layerInfo;
- protected:
-  int stave() {return _layerInfo._stave;}
-  int module() {return _layerInfo._module;}
-  LCVector3D& normal() {return _layerInfo._normal;}
-  LCVector3D& Iaxis() {return _layerInfo._Iaxis;}
-  LCVector3D& Jaxis() {return _layerInfo._Jaxis;}
-};
+	public:
+		virtual Processor*  newProcessor() { return new SimDigital;}
+		SimDigital() ;
 
-class SimDigitalGeomRPCFrame_TESLA_BARREL : public SimDigitalGeomRPCFrame
-{
- public:
-  SimDigitalGeomRPCFrame_TESLA_BARREL(SimDigitalGeomCellId& h) : SimDigitalGeomRPCFrame(h) {}
-  void setRPCFrame();
-};
-class SimDigitalGeomRPCFrame_VIDEAU_BARREL : public SimDigitalGeomRPCFrame
-{
- public:
-  SimDigitalGeomRPCFrame_VIDEAU_BARREL(SimDigitalGeomCellId& h) : SimDigitalGeomRPCFrame(h) {}
-  void setRPCFrame();
-};
-class SimDigitalGeomRPCFrame_TESLA_ENDCAP : public SimDigitalGeomRPCFrame
-{
- public:
-  SimDigitalGeomRPCFrame_TESLA_ENDCAP(SimDigitalGeomCellId& h) : SimDigitalGeomRPCFrame(h) {}
-  void setRPCFrame();
-};
-class SimDigitalGeomRPCFrame_VIDEAU_ENDCAP : public SimDigitalGeomRPCFrame
-{
- public:
-  SimDigitalGeomRPCFrame_VIDEAU_ENDCAP(SimDigitalGeomCellId& h) : SimDigitalGeomRPCFrame(h) {}
-  void setRPCFrame();
-};
-
-
-
-//helper class to manage multiplicity
-class multiplicityChargeSplitterBase
-{
- public:
-  multiplicityChargeSplitterBase();
-  virtual ~multiplicityChargeSplitterBase() {}
-  typedef std::pair<int,int> I_J_Coordinates;
-  virtual void addCharge(float charge, float pos_I, float pos_J)=0;
-  void newHit(float cell_Size) {_chargeMap.clear();_cellSize=cell_Size;}
-  const std::map<I_J_Coordinates,float>& chargeMap() {return _chargeMap;}
- protected:
-  float _cellSize;
-  std::map<I_J_Coordinates,float> _chargeMap;
-};
-
-
-class multiplicityChargeSplitterUniform : public multiplicityChargeSplitterBase
-{
- public:
-  multiplicityChargeSplitterUniform();
-  void addCharge(float charge, float pos_I, float pos_J);
- private:
-  float _edgeSize;
-  friend class SimDigital;
-};
-
-
-class multiplicityChargeSplitterFunction : public multiplicityChargeSplitterBase
-{
- public:
-  multiplicityChargeSplitterFunction();
-  virtual ~multiplicityChargeSplitterFunction();
-  void init();
-  void addCharge(float charge, float pos_I, float pos_J);
- private:
-  TF2* _f2;
-  float _range;
-  std::string _function_description;
-  std::vector<float> _functionParameters;
-  float _normalisation;
-  float _RPC_PadSeparation; //distance between cells
-  friend class SimDigital;
-};
-
-class multiplicityChargeSplitterErfFunction : public multiplicityChargeSplitterBase
-{
- public:
-  multiplicityChargeSplitterErfFunction();
-  virtual ~multiplicityChargeSplitterErfFunction();
-  void init();
-  void addCharge(float charge, float pos_I, float pos_J);
- private:
-  float _range;
-  std::vector<float> _erfWidth;
-  std::vector<float> _erfWeigth;
-  float _normalisation;
-  float _RPC_PadSeparation; //distance between cells
-  friend class SimDigital;
-};
-
-
-//helper class to manage efficiency maps
-class effMapBase
-{
- public:
-  virtual float getEfficiency(int I, int J, int K, int stave, int module)=0;
-
-  virtual ~effMapBase() {};
-};
-
-class effMapConstant : public effMapBase
-{
- public:
- effMapConstant(float val=1.0) : value(val) {}
-  //virtual float getEfficiency(int I, int J, int K, int stave, int module) { return value;}
-  virtual float getEfficiency(int , int , int , int , int ) { return value;}
- private:
-  float value;
-};
-
-
-class effMapProtoByAsic : public effMapBase
-{
- public:
-  effMapProtoByAsic(std::string fileName);
-  //virtual float getEfficiency(int I, int J, int K, int stave, int module) 
-  virtual float getEfficiency(int I, int J, int K, int , int ) 
-  {
-    std::map<int,float>::iterator it=_effMap.find( (I-1)/8+((J-1)/8)*12+K*1000 );
-    return (it != _effMap.end() ? it->second : 1.0);
-  }
- private:
-  std::map<int,float> _effMap;
-};
-
-
-class SimDigital : public Processor {
- public:
-  virtual Processor*  newProcessor() { return new SimDigital;}
-  SimDigital();
-
-  /** Called at the begin of the job before anything is read.
+		/** Called at the begin of the job before anything is read.
    * Use to initialize the processor, e.g. book histograms.
    */
-  virtual void init() ;
+		virtual void init() ;
 
-  /** Called for every run.
+		/** Called for every run.
    */
-  virtual void processRunHeader( LCRunHeader* run ) ;
+		virtual void processRunHeader( LCRunHeader* run ) ;
 
-/** Called for every event - the working horse.
+		/** Called for every event - the working horse.
    */
-  virtual void processEvent( LCEvent * evt ) ;
+		virtual void processEvent( LCEvent * evt ) ;
 
-  virtual void check( LCEvent * evt ) ;
 
-  /** Called after data processing for clean up.
+		/** Called after data processing for clean up.
    */
-  virtual void end() ;
+		virtual void end() ;
 
- private:
-  //std::vector<int> _hcalLayers;
-  //std::vector<std::string> _calorimeterHitCollections;
-  std::vector<std::string> _hcalCollections;
-  std::vector<std::string> _outputHcalCollections;
-  std::map<std::string, int> _counters;
-  std::vector<float> _thresholdHcal;
-  std::vector<float>_calibrCoeffHcal;
-  std::string _outputRelCollection;
-  bool _printSimDigital;
-  TF1 * _QPolya;
-  double _polyaAverageCharge, _polyaFunctionWidthParameter;
-  LCCollectionVec* _relcol;
 
-  int _chargeSplitterRandomSeed;
-  int _polyaRandomSeed;
+		SimDigital(const SimDigital &toCopy) = delete ;
+		void operator=(const SimDigital &toCopy) = delete ;
 
-  void processHCAL(LCEvent* evt, LCFlagImpl& flag);
 
-  static bool sortStepWithCharge(StepAndCharge s1, StepAndCharge s2){return s1.charge>s2.charge;}
+	private :
 
-  //intermediate storage class
-  struct hitMemory
-  {
-    hitMemory() : ahit(0),relatedHits(), maxEnergydueToHit(-1), rawHit(-1) {} 
-    CalorimeterHitImpl *ahit;
-    std::set<int> relatedHits;
-    float maxEnergydueToHit;
-    int rawHit;
-  };
+		std::vector<std::string> _hcalCollections ;
+		std::vector<std::string> _outputHcalCollections ;
+		std::map<std::string, int> _counters ;
+		std::vector<float> _thresholdHcal ;
+		std::vector<float> _calibrCoeffHcal ;
+		std::string _outputRelCollection = "" ;
 
-  typedef std::map<dd4hep::long64, hitMemory> cellIDHitMap;
 
-  float depositedEnergyInRPC;
-  multiplicityChargeSplitterUniform _chargeSplitterUniform;
-  multiplicityChargeSplitterFunction _chargeSplitterFunction;
-  multiplicityChargeSplitterErfFunction _chargeSplitterErfFunction;
-  multiplicityChargeSplitterBase* _theChosenSplitter;
-  bool _doThresholds;
-  std::string  _chargeSplitterOption;
-  std::string _effMapFileName;
-  float _constEffMapValue;
-  std::string _effMapOption;
-  effMapBase *_effMap;
-  float _absZstepFilter;
-  bool _keepAtLeastOneStep;
-  float _minXYdistanceBetweenStep;
-  AIDA::ITuple* _debugTupleStepFilter;
-  AIDA::ITuple* _tupleStepFilter;
-  AIDA::ITuple* _tupleCollection;
-  multiplicityChargeSplitterBase& getSplitter() { return *_theChosenSplitter; }
+		LCCollectionVec* _relcol = nullptr ;
 
-  //predicate class to remove potential hit below threshold
-  class ThresholdIsBelow
-  {
-    float value;
-  public:
-    ThresholdIsBelow(float f) : value(f) {;}
-    bool operator()(std::pair<int,hitMemory> f) { return f.second.ahit->getEnergy()<value;}
-  };
+		void processHCAL(LCEvent* evt, LCFlagImpl& flag) ;
 
-  //predicate class to remove steps
-  class absZGreaterThan
-  {
-  public:
-    absZGreaterThan(float val) : _value(val) {}
-      bool operator()(StepAndCharge& v) { return fabs( v.step.z() ) >_value;}
-  private:
-    float _value;
-  };
-  class randomGreater
-  {
-  public:
-  randomGreater(float val) : _value(val) {}
-    bool operator()(StepAndCharge& ) 
-	{ 
-		int rnd = rand();
-		return double(rnd)/RAND_MAX>_value;
-	}
-  private:
-    float _value;
-  };
-  //helper function to remove steps too close in I,J
-  void remove_adjacent_step(std::vector<StepAndCharge>& vec);
-  void fillTupleStep(std::vector<StepAndCharge>& vec,int level);
+		static bool sortStepWithCharge(StepAndCharge s1, StepAndCharge s2) {return s1.charge>s2.charge;}
 
-  LCCollectionVec * processHCALCollection(LCCollection * col ,CHT::Layout layout, LCFlagImpl& flag);
-  void createPotentialOutputHits(cellIDHitMap& myHitMap, LCCollection *col, SimDigitalGeomCellId& aGeomCellId);
-  void removeHitsBelowThreshold(cellIDHitMap& myHitMap, float threshold);
-  void applyThresholds(cellIDHitMap& myHitMap);
+		//intermediate storage class
+		struct hitMemory
+		{
+				hitMemory()
+					: relatedHits()
+				{}
+				CalorimeterHitImpl* ahit = nullptr ;
+				std::set<int> relatedHits ;
+				float maxEnergydueToHit = -1 ;
+				int rawHit = -1 ;
 
-  std::string _encodingType;
-  std::string _hcalOption;
-};
-  
+				hitMemory(const hitMemory& other) = delete ;
+				hitMemory& operator=(const hitMemory& other)
+				{
+					if (this != &other)
+						*this = other ;
+
+					return *this ;
+				}
+		} ;
+
+		typedef std::map<dd4hep::long64, hitMemory> cellIDHitMap ;
+
+		float depositedEnergyInRPC = 0.0f ;
+
+		//charge spreader
+		std::string chargeSpreaderOption = "Uniform ";
+		ChargeSpreaderParameters chargeSpreaderParameters ;
+		ChargeSpreader* chargeSpreader = nullptr ;
+
+
+		std::string polyaOption = "Uniform" ;
+		double polyaQbar = 0 ;
+		double polyaTheta = 0 ;
+		ChargeInducer* chargeInducer = nullptr ;
+		int _polyaRandomSeed = 1 ;
+
+
+		bool _doThresholds = true ;
+
+		std::string _effMapFileName = "" ;
+		float _constEffMapValue = 0.97f ;
+		std::string efficiencyOption  = "Uniform" ;
+		EfficiencyManager* efficiency = nullptr ;
+
+
+		float _absZstepFilter  = 0.0005f ;
+		bool _keepAtLeastOneStep = true ;
+		float _minXYdistanceBetweenStep  = 0.5f ;
+		AIDA::ITuple* _debugTupleStepFilter = nullptr ;
+		AIDA::ITuple* _tupleStepFilter = nullptr ;
+		AIDA::ITuple* _tupleCollection = nullptr ;
+
+
+
+		//predicate class to remove potential hit below threshold
+//		class ThresholdIsBelow
+//		{
+//				float value;
+//			public:
+//				ThresholdIsBelow(float f) : value(f) {;}
+//				bool operator()(std::pair<int,hitMemory> f) { return f.second.ahit->getEnergy()<value;}
+//		};
+
+//		//predicate class to remove steps
+//		class absZGreaterThan
+//		{
+//			public:
+//				absZGreaterThan(float val) : _value(val) {}
+//				bool operator()(StepAndCharge& v) { return fabs( v.step.z() ) >_value;}
+//			private:
+//				float _value;
+//		};
+
+//		class randomGreater
+//		{
+//			public:
+//				randomGreater(float val) : _value(val) {}
+//				bool operator()(StepAndCharge& )
+//				{
+//					int rnd = rand();
+//					return double(rnd)/RAND_MAX>_value;
+//				}
+//			private:
+//				float _value;
+//		} ;
+
+		//helper function to remove steps too close in I,J
+		void remove_adjacent_step(std::vector<StepAndCharge>& vec);
+		void fillTupleStep(std::vector<StepAndCharge>& vec,int level);
+
+		LCCollectionVec* processHCALCollection(LCCollection * col ,CHT::Layout layout, LCFlagImpl& flag) ;
+		void createPotentialOutputHits(cellIDHitMap& myHitMap, LCCollection* col, SimDigitalGeomCellId& aGeomCellId) ;
+		void removeHitsBelowThreshold(cellIDHitMap& myHitMap, float threshold) ;
+		void applyThresholds(cellIDHitMap& myHitMap) ;
+
+		std::string _encodingType  = "LCGEO" ;
+		std::string _hcalOption = "VIDEAU" ;
+
+} ;
+
 #endif

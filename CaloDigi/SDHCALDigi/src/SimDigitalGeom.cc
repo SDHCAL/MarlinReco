@@ -176,7 +176,20 @@ std::vector<StepAndCharge> SimDigitalGeomCellId::decode(SimCalorimeterHit* hit)
 		_tower     = _decoder( hit )[_encodingStrings[_encodingType][3]];
 
 	_Iy        = _decoder( hit )[_encodingStrings[_encodingType][4]];
-	_Jz        = _decoder( hit )[_encodingStrings[_encodingType][5]];
+	try {
+		_Jz = _decoder( hit )[_encodingStrings[_encodingType][5]];
+	}
+	catch (lcio::Exception &) {
+		_encodingStrings[_encodingType][5] = "z";
+
+		try {
+			_Jz = _decoder( hit )[_encodingStrings[_encodingType][5]];
+		}
+		catch(lcio::Exception &) {
+			_encodingStrings[_encodingType][5] = "y";
+			_Jz = _decoder( hit )[_encodingStrings[_encodingType][5]];
+		}
+	}
 
 	// _slice     = _decoder( hit )["slice"];
 	_hitPosition = hit->getPosition();
@@ -526,7 +539,8 @@ float SimDigitalGeomCellId::getCellSize()
 		const std::vector<dd4hep::rec::LayeredCalorimeterStruct::Layer>& hcalBarrelLayers = _caloData->layers;
 		const double CM2MM = 10.;
 
-		cellSize = hcalBarrelLayers[_trueLayer].cellSize0 * CM2MM;
+		cellSize = hcalBarrelLayers[_trueLayer].cellSize0 * CM2MM ;
+		cellSize = 10.0 ;
 	}
 
 	//streamlog_out( MESSAGE ) << "cellSize: " << cellSize << endl;

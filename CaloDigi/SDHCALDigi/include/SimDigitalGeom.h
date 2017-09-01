@@ -92,13 +92,13 @@ class SimDigitalGeomCellId
 		LCVector3D _normal;
 		LCVector3D _Iaxis;
 		LCVector3D _Jaxis;
-		static AIDA::ITuple* _tupleHit;
+		static AIDA::ITuple* _tupleHit ;
 		enum {TH_DETECTOR,TH_CHTLAYOUT,TH_MODULE,TH_TOWER,TH_STAVE,TH_LAYER,TH_I,TH_J,
 			  TH_X,TH_Y,TH_Z,
 			  TH_NORMALX,TH_NORMALY,TH_NORMALZ,
 			  TH_IX,TH_IY,TH_IZ,
 			  TH_JX,TH_JY,TH_JZ};
-		static AIDA::ITuple* _tupleStep;
+		static AIDA::ITuple* _tupleStep ;
 		enum {TS_DETECTOR,TS_CHTLAYOUT,TS_HITCELLID,TS_NSTEP,
 			  TS_HITX,TS_HITY,TS_HITZ,
 			  TS_STEPX,TS_STEPY,TS_STEPZ,

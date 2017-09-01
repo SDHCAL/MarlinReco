@@ -59,7 +59,7 @@ std::string SimDigitalGeomCellId::_encodingStrings[ENCODINGTYPES][ENCODINGSTRING
 
 	// The encoding string for Mokka
 	{ "K-1", "S-1", "M", "", "I", "J" }
-};
+} ;
 
 std::string SimDigitalGeomCellId::_hcalOption;
 
@@ -233,8 +233,8 @@ void SimDigital::init()
 {
 	//streamlog_out( DEBUG ) << "SimDigital: init" << std::endl;
 
-	SimDigitalGeomCellId::setEncodingType(_encodingType);
-	SimDigitalGeomCellId::setHcalOption(_hcalOption);
+	SimDigitalGeomCellId::setEncodingType(_encodingType) ;
+	SimDigitalGeomCellId::setHcalOption(_hcalOption) ;
 
 
 	//init charge inducer
@@ -272,7 +272,7 @@ void SimDigital::init()
 	//book tuples
 	_debugTupleStepFilter  = AIDAProcessor::tupleFactory( this )->create("SimDigitalStepDebug",
 																		 "SimDigital_StepDebug",
-																		 "int filterlevel, float deltaI,deltaJ,deltaLayer,minIJdist");
+																		 "int filterlevel, float deltaI,deltaJ,deltaLayer,minIJdist,charge");
 	streamlog_out(DEBUG) << "Tuple for step debug has been initialized to " << _debugTupleStepFilter << std::endl;
 	streamlog_out(DEBUG) << "it has " << _debugTupleStepFilter->columns() << " columns" <<std::endl;
 
@@ -325,10 +325,12 @@ void SimDigital::processHCAL(LCEvent* evt, LCFlagImpl& flag)
 
 void SimDigital::remove_adjacent_step(std::vector<StepAndCharge>& vec)
 {
-	if (vec.size()==0) return;
-	std::vector<StepAndCharge>::iterator first=vec.begin();
-	std::vector<StepAndCharge>::iterator lasttobekept=vec.end();
-	lasttobekept--;
+	if ( vec.size() == 0 )
+		return;
+	std::vector<StepAndCharge>::iterator first = vec.begin() ;
+	std::vector<StepAndCharge>::iterator lasttobekept = vec.end() ;
+	lasttobekept-- ;
+
 	while (int(first-lasttobekept)<0)
 	{
 		std::vector<StepAndCharge>::iterator second=first;
@@ -343,12 +345,14 @@ void SimDigital::remove_adjacent_step(std::vector<StepAndCharge>& vec)
 				lasttobekept--;
 			}
 		}
-		if ( ((*first).step-(*lasttobekept).step).perp() <= _minXYdistanceBetweenStep ) lasttobekept--;
+		if ( ((*first).step-(*lasttobekept).step).perp() <= _minXYdistanceBetweenStep )
+			lasttobekept--;
 		first++;
 	}
 	std::vector<StepAndCharge>::iterator firstToremove=lasttobekept;
 	firstToremove++;
-	if (_keepAtLeastOneStep && firstToremove==vec.begin()) firstToremove++;
+	if (_keepAtLeastOneStep && firstToremove==vec.begin())
+		firstToremove++;
 	vec.erase(firstToremove,vec.end());
 }
 
@@ -365,11 +369,14 @@ void SimDigital::fillTupleStep(std::vector<StepAndCharge>& vec,int level)
 		float minDist=20000;
 		for (std::vector<StepAndCharge>::iterator itB=vec.begin(); itB != vec.end(); itB++)
 		{
-			if (itB==it) continue;
-			float dist=((it->step)-(itB->step)).perp();
-			if (dist<minDist) minDist=dist;
+			if (itB == it)
+				continue ;
+			float dist = ( (it->step)-(itB->step) ).perp() ;
+			if (dist < minDist)
+				minDist=dist ;
 		}
 		_debugTupleStepFilter->fill(4,minDist);
+		_debugTupleStepFilter->fill(5,it->charge) ;
 		_debugTupleStepFilter->addRow();
 	}
 }
@@ -380,7 +387,7 @@ void SimDigital::createPotentialOutputHits(cellIDHitMap& myHitMap, LCCollection*
 	for (int j = 0 ; j < numElements ; ++j )
 	{
 		SimCalorimeterHit * hit = dynamic_cast<SimCalorimeterHit*>( col->getElementAt( j ) ) ;
-		depositedEnergyInRPC+=hit->getEnergy()/1e6;
+		depositedEnergyInRPC += hit->getEnergy()/1e6 ;
 		std::vector<StepAndCharge> steps = aGeomCellId.decode(hit) ;
 		fillTupleStep(steps,0) ;
 
@@ -390,51 +397,42 @@ void SimDigital::createPotentialOutputHits(cellIDHitMap& myHitMap, LCCollection*
 		chargeSpreader->newHit(cellSize) ;
 
 		float toto = _absZstepFilter ;
-		//std::vector<StepAndCharge>::iterator remPos = std::remove_if(steps.begin(), steps.end(), absZGreaterThan(_absZstepFilter) ) ;
 		std::vector<StepAndCharge>::iterator remPos = std::remove_if(steps.begin(), steps.end(),
 																	 [toto](const StepAndCharge& v) { return std::abs( v.step.z() ) > toto ; } ) ;
 
 
-		if (steps.size() > 0 &&_keepAtLeastOneStep && remPos==steps.begin() )
+		if (steps.size() > 0 &&_keepAtLeastOneStep && remPos == steps.begin() )
 			remPos++ ;
-		steps.erase(remPos,steps.end());
+		steps.erase( remPos , steps.end() ) ;
 		fillTupleStep(steps,1);
 
 		float eff = efficiency->getEfficiency(aGeomCellId) ;
 		steps.erase( std::remove_if(steps.begin() , steps.end() , [eff](const StepAndCharge&) { return static_cast<double>(rand())/RAND_MAX > eff ; } ) ,
 					 steps.end() ) ;
 
-		//		steps.erase( std::remove_if(steps.begin() , steps.end() , randomGreater(effCorr) ), steps.end() ) ;
+		fillTupleStep(steps,2) ;
 
-
-		fillTupleStep(steps,2);
-
-		for (std::vector<StepAndCharge>::iterator itstep=steps.begin(); itstep != steps.end(); itstep++)
+		for ( auto& itstep : steps )
 		{
-			itstep->charge = chargeInducer->getCharge(aGeomCellId) ;
-			//streamlog_out( DEBUG ) << "itstep->charge: " << itstep->charge << std::endl;
-			if(itstep->charge<0.4)streamlog_out(DEBUG) <<" "<<itstep->charge<<std::endl;
-			streamlog_out( DEBUG ) << "step at : " << itstep->step
-								   << "\t with a charge of : " << itstep->charge
-								   << std::endl;
+			itstep.charge = chargeInducer->getCharge(aGeomCellId) ;
+
+			streamlog_out( DEBUG ) << "step at : " << itstep.step << "\t with a charge of : " << itstep.charge << std::endl ;
 		} //loop on itstep
 
-		std::sort(steps.begin(), steps.end(), sortStepWithCharge );
+		std::sort(steps.begin(), steps.end(), sortStepWithCharge ) ;
 		streamlog_out( DEBUG ) << "sim hit at " << hit << std::endl;
 		if (streamlog::out.write< DEBUG >() )
 		{
-			for(std::vector<StepAndCharge>::iterator it=steps.begin(); it!=steps.end(); ++it){
-				streamlog_out( DEBUG ) << "step at : " << (*it).step
-									   << "\t with a charge of : " << (*it).charge
-									   << std::endl;
-			}
+			for(std::vector<StepAndCharge>::iterator it=steps.begin(); it!=steps.end(); ++it)
+				streamlog_out( DEBUG ) << "step at : " << (*it).step << "\t with a charge of : " << (*it).charge << std::endl;
+
 		}
 
 
 
-		remove_adjacent_step(steps);
-		fillTupleStep(steps,3);
-		_tupleStepFilter->addRow();
+		remove_adjacent_step(steps) ;
+		fillTupleStep(steps,3) ;
+		_tupleStepFilter->addRow() ;
 
 
 		for ( const StepAndCharge& itstep : steps )
@@ -480,7 +478,6 @@ void SimDigital::createPotentialOutputHits(cellIDHitMap& myHitMap, LCCollection*
 
 void SimDigital::removeHitsBelowThreshold(cellIDHitMap& myHitMap, float threshold)
 {
-
 	for ( auto it = myHitMap.cbegin() ; it != myHitMap.cend() ; )
 	{
 		if ( (it->second).ahit->getEnergy() < threshold )
@@ -489,99 +486,87 @@ void SimDigital::removeHitsBelowThreshold(cellIDHitMap& myHitMap, float threshol
 		else
 			++it ;
 	}
-	//	ThresholdIsBelow t(threshold) ;
-
-
-	//	myHitMap.erase( std::remove_if(myHitMap.begin() , myHitMap.end() , [threshold](const cellIDHitMap::value_type& f) { return (f.second).ahit->getEnergy() < threshold ; } ) ,
-	//					myHitMap.end() ) ;
-	//	do
-	//	{
-	//		itr = find_if(myHitMap.begin(), myHitMap.end(), t) ;
-	//		if (itr != myHitMap.end())
-	//		{
-	//			delete itr->second.ahit ;
-	//			myHitMap.erase(itr) ;
-	//		}
-	//	} while (itr != myHitMap.end()) ;
-
-
-	//	class ThresholdIsBelow
-	//	{
-	//			float value;
-	//		public:
-	//			ThresholdIsBelow(float f) : value(f) {;}
-	//			bool operator()(std::pair<int,hitMemory> f) { return f.second.ahit->getEnergy()<value;}
-	//	};
-
-
 }
 
 
 void SimDigital::applyThresholds(cellIDHitMap& myHitMap)
 {
-	for (cellIDHitMap::iterator it=myHitMap.begin(); it!=myHitMap.end(); it++)
+	for (cellIDHitMap::iterator it = myHitMap.begin() ; it != myHitMap.end() ; it++)
 	{
-		hitMemory & currentHitMem=it->second;
-		float Tcharge=currentHitMem.ahit->getEnergy();
-		float calibr_coeff(1.);
-		unsigned int ilevel=0;
-		for(unsigned int ithresh=1;ithresh<_thresholdHcal.size();ithresh++){
-			if(Tcharge>_thresholdHcal[ithresh])ilevel=ithresh;   // ilevel = 0 , 1, 2
+		hitMemory& currentHitMem = it->second ;
+		float Tcharge = currentHitMem.ahit->getEnergy() ;
+		float calibr_coeff = 1.0f ;
+		unsigned int ilevel = 0 ;
+		for ( unsigned int ithresh = 1 ; ithresh<_thresholdHcal.size() ; ithresh++ )
+		{
+			if ( Tcharge > _thresholdHcal.at(ithresh) )
+				ilevel = ithresh ;   // ilevel = 0 , 1, 2
 		}
-		if(ilevel>_calibrCoeffHcal.size()-1){
-			streamlog_out(ERROR)  << " Semi-digital level " << ilevel  << " greater than number of HCAL Calibration Constants (" <<_calibrCoeffHcal.size() << ")" << std::endl;
-			ilevel=_calibrCoeffHcal.size()-1;
-		}else{
-			calibr_coeff = _calibrCoeffHcal[ilevel];
+		if ( ilevel > _calibrCoeffHcal.size() - 1 )
+		{
+			streamlog_out(ERROR)  << " Semi-digital level " << ilevel  << " greater than number of HCAL Calibration Constants (" <<_calibrCoeffHcal.size() << ")" << std::endl ;
+			ilevel = _calibrCoeffHcal.size() - 1 ;
 		}
-		if (ilevel==0) _counters["N1"]++;
-		if (ilevel==1) _counters["N2"]++;
-		if (ilevel==2) _counters["N3"]++;
+		else
+		{
+			calibr_coeff = _calibrCoeffHcal.at(ilevel) ;
+		}
+
+		if (ilevel==0)
+			_counters["N1"]++;
+		if (ilevel==1)
+			_counters["N2"]++;
+		if (ilevel==2)
+			_counters["N3"]++;
+
 		currentHitMem.ahit->setEnergy(calibr_coeff);
 	}
 }
 
-LCCollectionVec * SimDigital::processHCALCollection(LCCollection * col, CHT::Layout layout, LCFlagImpl& flag)
+LCCollectionVec* SimDigital::processHCALCollection(LCCollection* col, CHT::Layout layout, LCFlagImpl& flag)
 {
-	LCCollectionVec *hcalcol = new LCCollectionVec(LCIO::CALORIMETERHIT);
-	hcalcol->setFlag(flag.getFlag());
+	LCCollectionVec* hcalcol = new LCCollectionVec(LCIO::CALORIMETERHIT) ;
+	hcalcol->setFlag(flag.getFlag()) ;
 	cellIDHitMap myHitMap;
 
 	//  streamlog_out( DEBUG )<<"LCCollectionVec * SimDigital::processHCALCollection: layout= "<< layout<< endl;
 
 	SimDigitalGeomCellId g(col,hcalcol);
 	g.setLayerLayout(layout);
-	createPotentialOutputHits(myHitMap,col, g );
-	removeHitsBelowThreshold(myHitMap,_thresholdHcal[0]);
-	if (_doThresholds) applyThresholds(myHitMap);
+	createPotentialOutputHits(myHitMap,col, g ) ;
+	removeHitsBelowThreshold(myHitMap , _thresholdHcal.at(0) ) ;
+
+	if (_doThresholds)
+		applyThresholds(myHitMap) ;
 
 	//Store element to output collection
-	for (cellIDHitMap::iterator it=myHitMap.begin(); it!=myHitMap.end(); it++) {
-		hitMemory & currentHitMem=it->second;
+	for (cellIDHitMap::iterator it = myHitMap.begin() ; it != myHitMap.end() ; it++)
+	{
+		hitMemory & currentHitMem = it->second ;
 		if (currentHitMem.rawHit != -1)
 		{
-			streamlog_out(DEBUG)  << " rawHit= " << currentHitMem.rawHit << std::endl;
+			streamlog_out(DEBUG) << " rawHit= " << currentHitMem.rawHit << std::endl ;
 			SimCalorimeterHit * hitraw = dynamic_cast<SimCalorimeterHit*>( col->getElementAt( currentHitMem.rawHit ) ) ;
-			currentHitMem.ahit->setRawHit(hitraw);
+			currentHitMem.ahit->setRawHit(hitraw) ;
 		}
-		hcalcol->addElement(currentHitMem.ahit);
-		for (std::set<int>::iterator itset=currentHitMem.relatedHits.begin(); itset != currentHitMem.relatedHits.end(); itset++)
+		hcalcol->addElement(currentHitMem.ahit) ;
+		for (std::set<int>::iterator itset = currentHitMem.relatedHits.begin() ; itset != currentHitMem.relatedHits.end() ; itset++)
 		{
-			SimCalorimeterHit * hit = dynamic_cast<SimCalorimeterHit*>( col->getElementAt( *itset ) ) ;
-			LCRelationImpl *rel = new LCRelationImpl(currentHitMem.ahit,hit,1.0);
-			_relcol->addElement( rel );
+			SimCalorimeterHit* hit = dynamic_cast<SimCalorimeterHit*>( col->getElementAt( *itset ) ) ;
+			LCRelationImpl* rel = new LCRelationImpl(currentHitMem.ahit,hit,1.0) ;
+			_relcol->addElement( rel ) ;
 		}
 	} //end of loop on myHitMap
 
 	// add HCAL collection to event
-	return hcalcol;
+	return hcalcol ;
 }
 
 void SimDigital::processEvent( LCEvent * evt )
 {
 	if( isFirstEvent() )
 	{
-		gRandom->SetSeed(_polyaRandomSeed) ;
+		srand( static_cast<unsigned int>(_polyaRandomSeed) ) ;
 
 		SimDigitalGeomCellId::bookTuples(this) ;
 	}

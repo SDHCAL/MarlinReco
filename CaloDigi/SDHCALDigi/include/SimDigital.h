@@ -212,39 +212,6 @@ class SimDigital : public Processor
 		AIDA::ITuple* _tupleCollection = nullptr ;
 
 
-
-		//predicate class to remove potential hit below threshold
-//		class ThresholdIsBelow
-//		{
-//				float value;
-//			public:
-//				ThresholdIsBelow(float f) : value(f) {;}
-//				bool operator()(std::pair<int,hitMemory> f) { return f.second.ahit->getEnergy()<value;}
-//		};
-
-//		//predicate class to remove steps
-//		class absZGreaterThan
-//		{
-//			public:
-//				absZGreaterThan(float val) : _value(val) {}
-//				bool operator()(StepAndCharge& v) { return fabs( v.step.z() ) >_value;}
-//			private:
-//				float _value;
-//		};
-
-//		class randomGreater
-//		{
-//			public:
-//				randomGreater(float val) : _value(val) {}
-//				bool operator()(StepAndCharge& )
-//				{
-//					int rnd = rand();
-//					return double(rnd)/RAND_MAX>_value;
-//				}
-//			private:
-//				float _value;
-//		} ;
-
 		//helper function to remove steps too close in I,J
 		void remove_adjacent_step(std::vector<StepAndCharge>& vec);
 		void fillTupleStep(std::vector<StepAndCharge>& vec,int level);

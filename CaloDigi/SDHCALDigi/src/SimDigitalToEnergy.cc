@@ -5,6 +5,12 @@
 #include <EVENT/CalorimeterHit.h>
 #include <IMPL/CalorimeterHitImpl.h>
 #include <IMPL/LCRelationImpl.h>
+#include <IMPL/LCFlagImpl.h>
+
+#include <UTIL/CellIDEncoder.h>
+#include <UTIL/CellIDDecoder.h>
+
+#include <DD4hep/Factories.h>
 
 using namespace lcio ;
 using namespace marlin ;
@@ -95,12 +101,23 @@ LCCollectionVec* SimDigitalToEnergy::processCollection(LCCollection* col)
 {
 	LCCollectionVec* recCol = new LCCollectionVec(LCIO::CALORIMETERHIT) ;
 
+
+	CellIDDecoder<CalorimeterHit> decoder(col) ;
+	CellIDEncoder<CalorimeterHitImpl> encoder( col->getParameters().getStringVal(LCIO::CellIDEncoding) , recCol ) ;
+
+	LCFlagImpl flag = col->getFlag() ;
+	recCol->setFlag( flag.getFlag() ) ;
+
+
 	unsigned long nThresholds = _energyCoefficients.size() ;
 
 	int nHit = col->getNumberOfElements() ;
 	for ( int i = 0 ; i < nHit ; ++i )
 	{
 		CalorimeterHit* digiHit = dynamic_cast<CalorimeterHit*>( col->getElementAt( i ) ) ;
+
+		dd4hep::long64 cellIDvalue = decoder( digiHit ).getValue() ;
+		encoder.setValue(cellIDvalue) ;
 
 		CalorimeterHitImpl* recHit = new CalorimeterHitImpl ;
 
@@ -118,8 +135,9 @@ LCCollectionVec* SimDigitalToEnergy::processCollection(LCCollection* col)
 		else
 			recHit->setEnergy( _energyCoefficients.at( iCoeff ) ) ;
 
-		recHit->setCellID0( digiHit->getCellID0() ) ;
-		recHit->setCellID1( digiHit->getCellID1() ) ;
+//		recHit->setCellID0( digiHit->getCellID0() ) ;
+//		recHit->setCellID1( digiHit->getCellID1() ) ;
+		encoder.setCellID( recHit ) ;
 		recHit->setPosition( digiHit->getPosition() ) ;
 		recHit->setTime( digiHit->getTime() ) ;
 		recHit->setRawHit( digiHit ) ;

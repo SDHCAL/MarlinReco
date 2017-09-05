@@ -116,17 +116,13 @@ struct AsicKey
 class SimDigital : public Processor
 {
 	public:
-		virtual Processor*  newProcessor() { return new SimDigital;}
+		virtual Processor* newProcessor() { return new SimDigital ; }
 		SimDigital() ;
 
 		/** Called at the begin of the job before anything is read.
    * Use to initialize the processor, e.g. book histograms.
    */
 		virtual void init() ;
-
-		/** Called for every run.
-   */
-		virtual void processRunHeader( LCRunHeader* run ) ;
 
 		/** Called for every event - the working horse.
    */
@@ -144,11 +140,10 @@ class SimDigital : public Processor
 
 	private :
 
-		std::vector<std::string> _hcalCollections ;
-		std::vector<std::string> _outputHcalCollections ;
-		std::map<std::string, int> _counters ;
-		std::vector<float> _thresholdHcal ;
-		std::vector<float> _calibrCoeffHcal ;
+		std::vector<std::string> _hcalCollections {} ;
+		std::vector<std::string> _outputHcalCollections {} ;
+		std::map<std::string, int> _counters {} ;
+		std::vector<float> _thresholdHcal {} ;
 		std::string _outputRelCollection = "" ;
 
 
@@ -156,7 +151,7 @@ class SimDigital : public Processor
 
 		void processHCAL(LCEvent* evt, LCFlagImpl& flag) ;
 
-		static bool sortStepWithCharge(StepAndCharge s1, StepAndCharge s2) {return s1.charge>s2.charge;}
+		static bool sortStepWithCharge(StepAndCharge s1, StepAndCharge s2) { return s1.charge > s2.charge ; }
 
 		//intermediate storage class
 		struct hitMemory
@@ -170,13 +165,7 @@ class SimDigital : public Processor
 				int rawHit = -1 ;
 
 				hitMemory(const hitMemory& other) = delete ;
-				hitMemory& operator=(const hitMemory& other)
-				{
-					if (this != &other)
-						*this = other ;
-
-					return *this ;
-				}
+				hitMemory& operator=(const hitMemory& other) = delete ;
 		} ;
 
 		typedef std::map<dd4hep::long64, hitMemory> cellIDHitMap ;
@@ -184,7 +173,7 @@ class SimDigital : public Processor
 		float depositedEnergyInRPC = 0.0f ;
 
 		//charge spreader
-		std::string chargeSpreaderOption = "Uniform ";
+		std::string chargeSpreaderOption = "Uniform" ;
 		ChargeSpreaderParameters chargeSpreaderParameters ;
 		ChargeSpreader* chargeSpreader = nullptr ;
 
@@ -205,20 +194,20 @@ class SimDigital : public Processor
 
 
 		float _absZstepFilter  = 0.0005f ;
-		bool _keepAtLeastOneStep = true ;
 		float _minXYdistanceBetweenStep  = 0.5f ;
+		bool _keepAtLeastOneStep = true ;
 		AIDA::ITuple* _debugTupleStepFilter = nullptr ;
 		AIDA::ITuple* _tupleStepFilter = nullptr ;
 		AIDA::ITuple* _tupleCollection = nullptr ;
 
 
 		//helper function to remove steps too close in I,J
-		void remove_adjacent_step(std::vector<StepAndCharge>& vec);
-		void fillTupleStep(std::vector<StepAndCharge>& vec,int level);
+		void removeAdjacentStep(std::vector<StepAndCharge>& vec) ;
+		void fillTupleStep(std::vector<StepAndCharge>& vec , int level) ;
 
-		LCCollectionVec* processHCALCollection(LCCollection * col ,CHT::Layout layout, LCFlagImpl& flag) ;
-		void createPotentialOutputHits(cellIDHitMap& myHitMap, LCCollection* col, SimDigitalGeomCellId& aGeomCellId) ;
-		void removeHitsBelowThreshold(cellIDHitMap& myHitMap, float threshold) ;
+		LCCollectionVec* processHCALCollection(LCCollection* col , CHT::Layout layout , LCFlagImpl& flag) ;
+		void createPotentialOutputHits(cellIDHitMap& myHitMap , LCCollection* col , SimDigitalGeomCellId& aGeomCellId) ;
+		void removeHitsBelowThreshold(cellIDHitMap& myHitMap , float threshold) ;
 		void applyThresholds(cellIDHitMap& myHitMap) ;
 
 		std::string _encodingType  = "LCGEO" ;

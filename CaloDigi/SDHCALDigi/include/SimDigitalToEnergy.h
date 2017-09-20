@@ -2,7 +2,6 @@
 #define SimDigitalToEnergy_h
 
 #include <marlin/Processor.h>
-
 #include <IMPL/LCCollectionVec.h>
 
 class SimDigitalToEnergy : public marlin::Processor
@@ -29,9 +28,12 @@ class SimDigitalToEnergy : public marlin::Processor
 
 	private :
 
-		std::vector<std::string> _hcalCollections {} ;
+		std::vector<std::string> _inputHcalCollections {} ;
 		std::vector<std::string> _outputHcalCollections {} ;
+		std::string _inputRelCollection = "" ;
 		std::string _outputRelCollection = "" ;
+
+		LCCollection* inputRelCol = nullptr ;
 		LCCollectionVec* _relcol = nullptr ;
 
 		std::vector<float> _energyCoefficients {} ;

@@ -14,9 +14,18 @@
 using namespace lcio ;
 using namespace marlin ;
 
+std::string SimDigitalGeomCellId::_encodingStrings[ENCODINGTYPES][ENCODINGSTRINGLENGTH] =
+{
+	// The encoding string for lcgeo: barrel and endcap ring of hcal
+	{ "layer", "stave", "module", "tower", "x", "y" },
+
+	// The encoding string for Mokka
+	{ "K-1", "S-1", "M", "", "I", "J" }
+} ;
+
+std::string SimDigitalGeomCellId::_hcalOption ;
 AIDA::ITuple* SimDigitalGeomCellId::_tupleHit = NULL;
 AIDA::ITuple* SimDigitalGeomCellId::_tupleStep = NULL;
-
 
 void SimDigitalGeomCellId::bookTuples(const marlin::Processor* proc)
 {
@@ -504,7 +513,7 @@ void SimDigitalGeomCellId::setLayerLayout(CHT::Layout layout)
 
 int SimDigitalGeomCellId::_encodingType = 0;
 
-const std::string EncodingType[ENCODINGTYPES] = {"LCGEO", "MOKKA"};
+const std::string EncodingType[ENCODINGTYPES] = {"LCGEO", "MOKKA"} ;
 
 void SimDigitalGeomCellId::setEncodingType(std::string type)
 {

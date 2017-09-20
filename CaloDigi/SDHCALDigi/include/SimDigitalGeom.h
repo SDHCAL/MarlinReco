@@ -104,7 +104,7 @@ class SimDigitalGeomCellId
 			  TS_STEPX,TS_STEPY,TS_STEPZ,
 			  TS_DELTAI,TS_DELTAJ,TS_DELTALAYER};
 
-		static std::string _encodingStrings[ENCODINGTYPES][ENCODINGSTRINGLENGTH];
+		static std::string _encodingStrings[ENCODINGTYPES][ENCODINGSTRINGLENGTH] ;
 
 		std::string _cellIDEncodingString = "" ;
 

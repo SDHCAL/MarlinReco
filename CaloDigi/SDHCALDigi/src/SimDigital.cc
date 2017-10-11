@@ -91,6 +91,10 @@ SimDigital::SimDigital()
 							   _thresholdHcal,
 							   hcalThresholds) ;
 
+	registerProcessorParameter( "HCALCellSize" ,
+								"Cell size (mm) of HCAL, if it is equal or less than zero then the value is taken from dd4hep" ,
+								_cellSize ,
+								0.0f ) ;
 
 
 	registerProcessorParameter("EffMapOption" ,
@@ -459,9 +463,14 @@ void SimDigital::processCollection(LCCollection* inputCol , LCCollectionVec*& ou
 
 	SimDigitalGeomCellId* geomCellId = nullptr ;
 	if ( _encodingType == std::string("LCGEO") )
+	{
 		geomCellId = new SimDigitalGeomCellIdLCGEO(inputCol,outputCol) ;
+		dynamic_cast<SimDigitalGeomCellIdLCGEO*>(geomCellId)->setCellSize(_cellSize) ;
+	}
 	else if ( _encodingType == std::string("MOKKA") )
+	{
 		geomCellId = new SimDigitalGeomCellIdMOKKA(inputCol,outputCol) ;
+	}
 
 	geomCellId->setLayerLayout(layout) ;
 	createPotentialOutputHits(myHitMap , inputCol , geomCellId) ;
@@ -487,12 +496,12 @@ void SimDigital::processCollection(LCCollection* inputCol , LCCollectionVec*& ou
 		LCRelationImpl* rel = new LCRelationImpl(hit , currentHitMem.ahit , 1.0) ;
 		outputRelCol->addElement( rel ) ;
 
-//		for (std::set<int>::iterator itset = currentHitMem.relatedHits.begin() ; itset != currentHitMem.relatedHits.end() ; itset++)
-//		{
-//			SimCalorimeterHit* hit = dynamic_cast<SimCalorimeterHit*>( inputCol->getElementAt( *itset ) ) ;
-//			LCRelationImpl* rel = new LCRelationImpl(hit , currentHitMem.ahit , 1.0) ;
-//			outputRelCol->addElement( rel ) ;
-//		}
+		//		for (std::set<int>::iterator itset = currentHitMem.relatedHits.begin() ; itset != currentHitMem.relatedHits.end() ; itset++)
+		//		{
+		//			SimCalorimeterHit* hit = dynamic_cast<SimCalorimeterHit*>( inputCol->getElementAt( *itset ) ) ;
+		//			LCRelationImpl* rel = new LCRelationImpl(hit , currentHitMem.ahit , 1.0) ;
+		//			outputRelCol->addElement( rel ) ;
+		//		}
 	} //end of loop on myHitMap
 
 	delete geomCellId ;

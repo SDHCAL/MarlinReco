@@ -44,7 +44,7 @@ SimDigitalGeomCellId::SimDigitalGeomCellId(LCCollection* inputCol, LCCollectionV
 
 SimDigitalGeomCellIdLCGEO::SimDigitalGeomCellIdLCGEO(LCCollection* inputCol, LCCollectionVec* outputCol)
 	: SimDigitalGeomCellId(inputCol , outputCol)
-//	  theDetector()
+	//	  theDetector()
 {
 	streamlog_out( DEBUG ) << "we will use lcgeo!" << std::endl ;
 }
@@ -161,12 +161,36 @@ void SimDigitalGeomRPCFrame_VIDEAU_ENDCAP::setRPCFrame()
 	}
 }
 
+void SimDigitalGeomCellId::createStepAndChargeVec(SimCalorimeterHit* hit , std::vector<StepAndCharge>& vec)
+{
+	LCVector3D hitpos;
+	if (NULL != _hitPosition)
+		hitpos.set(_hitPosition[0],_hitPosition[1],_hitPosition[2]);
+	for (int imcp=0; imcp<hit->getNMCContributions(); imcp++)
+	{
+		LCVector3D stepposvec;
+		const float* steppos=hit->getStepPosition(imcp);
+		if (NULL != steppos) stepposvec.set(steppos[0],steppos[1],steppos[2]);
+		if (stepposvec.mag2() != 0)
+		{
+			stepposvec-=hitpos;
+			vec.push_back( StepAndCharge(LCVector3D(stepposvec*_Iaxis,stepposvec*_Jaxis,stepposvec*_normal)) );
+		}
+		else
+			streamlog_out(WARNING) << "DIGITISATION : STEP POSITION IS (0,0,0)" << std::endl;
+	}
+
+	//if no steps have been found, then put one step at the center of the cell :
+	if (vec.size() == 0)
+		vec.push_back(StepAndCharge(LCVector3D(0,0,0))) ;
+}
+
 
 std::vector<StepAndCharge> SimDigitalGeomCellIdLCGEO::decode(SimCalorimeterHit* hit)
 {
 	_cellIDvalue = _decoder( hit ).getValue() ;
 
-	_trueLayer = _decoder( hit )[_encodingString.at(0)] - 1; // -1;
+	_trueLayer = _decoder( hit )[_encodingString.at(0)] - 1 ; // -1;
 	_stave     = _decoder( hit )[_encodingString.at(1)] ;     // +1
 	_module    = _decoder( hit )[_encodingString.at(2)] ;
 
@@ -204,7 +228,6 @@ std::vector<StepAndCharge> SimDigitalGeomCellIdLCGEO::decode(SimCalorimeterHit* 
 
 	dd4hep::Detector& ild = dd4hep::Detector::getInstance() ;
 	dd4hep::rec::CellIDPositionConverter idposConv( ild )  ;
-
 
 	dd4hep::BitField64 idDecoder( _cellIDEncodingString ) ;
 
@@ -285,25 +308,7 @@ std::vector<StepAndCharge> SimDigitalGeomCellIdLCGEO::decode(SimCalorimeterHit* 
 
 
 	std::vector<StepAndCharge> stepsInIJZcoord ;
-	LCVector3D hitpos;
-	if (NULL != _hitPosition) hitpos.set(_hitPosition[0],_hitPosition[1],_hitPosition[2]);
-	for (int imcp=0; imcp<hit->getNMCContributions(); imcp++)
-	{
-		LCVector3D stepposvec;
-		const float* steppos=hit->getStepPosition(imcp);
-		if (NULL != steppos) stepposvec.set(steppos[0],steppos[1],steppos[2]);
-		if (stepposvec.mag2() != 0)
-		{
-			stepposvec-=hitpos;
-			stepsInIJZcoord.push_back( StepAndCharge(LCVector3D(stepposvec*_Iaxis,stepposvec*_Jaxis,stepposvec*_normal)) );
-		}
-		else
-			streamlog_out(WARNING) << "DIGITISATION : STEP POSITION IS (0,0,0)" << std::endl;
-	}
-
-	//if no steps have been found, then put one step at the center of the cell :
-	if (stepsInIJZcoord.size() == 0)
-		stepsInIJZcoord.push_back(StepAndCharge(LCVector3D(0,0,0))) ;
+	createStepAndChargeVec(hit , stepsInIJZcoord) ;
 
 	fillDebugTupleGeometryHit() ;
 	fillDebugTupleGeometryStep(hit , stepsInIJZcoord) ;
@@ -344,35 +349,17 @@ std::vector<StepAndCharge> SimDigitalGeomCellIdMOKKA::decode(SimCalorimeterHit* 
 
 	// _slice     = _decoder( hit )["slice"];
 	_hitPosition = hit->getPosition();
-	if(abs(_Iy)<1 && abs(_Iy)!=0.0) streamlog_out(DEBUG) << "_Iy, _Jz:"<<_Iy <<" "<<_Jz<< std::endl;
+	if(abs(_Iy)<1 && abs(_Iy)!=0.0)
+		streamlog_out(DEBUG) << "_Iy, _Jz:"<<_Iy <<" "<<_Jz<< std::endl;
 	//if(_module==0||_module==6) streamlog_out( DEBUG )<<"tower "<<_tower<<" layer "<<_trueLayer<<" stave "<<_stave<<" module "<<_module<<std::endl;
 	//<<" Iy " << _Iy <<"  Jz "<<_Jz<<" hitPosition "<<_hitPosition<<std::endl
 	//<<" _hitPosition[0] "<<_hitPosition[0]<<" _hitPosition[1] "<<_hitPosition[1]<<" _hitPosition[2] "<<_hitPosition[2]<<std::endl;
-
 
 	_normal_I_J_setter->setRPCFrame() ;
 
 
 	std::vector<StepAndCharge> stepsInIJZcoord ;
-	LCVector3D hitpos;
-	if (NULL != _hitPosition) hitpos.set(_hitPosition[0],_hitPosition[1],_hitPosition[2]);
-	for (int imcp=0; imcp<hit->getNMCContributions(); imcp++)
-	{
-		LCVector3D stepposvec;
-		const float* steppos=hit->getStepPosition(imcp);
-		if (NULL != steppos) stepposvec.set(steppos[0],steppos[1],steppos[2]);
-		if (stepposvec.mag2() != 0)
-		{
-			stepposvec-=hitpos;
-			stepsInIJZcoord.push_back( StepAndCharge(LCVector3D(stepposvec*_Iaxis,stepposvec*_Jaxis,stepposvec*_normal)) );
-		}
-		else
-			streamlog_out(WARNING) << "DIGITISATION : STEP POSITION IS (0,0,0)" << std::endl;
-	}
-
-	//if no steps have been found, then put one step at the center of the cell :
-	if (stepsInIJZcoord.size() == 0)
-		stepsInIJZcoord.push_back(StepAndCharge(LCVector3D(0,0,0))) ;
+	createStepAndChargeVec(hit , stepsInIJZcoord) ;
 
 	fillDebugTupleGeometryHit() ;
 	fillDebugTupleGeometryStep(hit , stepsInIJZcoord) ;
@@ -603,15 +590,20 @@ void SimDigitalGeomCellIdMOKKA::setLayerLayout(CHT::Layout layout)
 
 float SimDigitalGeomCellIdLCGEO::getCellSize()
 {
-	float cellSize = 0.;
+	float cellSize = 0.f ;
+	const double CM2MM = 10.0 ;
 
-	if(_caloData != nullptr)
+	if ( _caloData != nullptr )
 	{
-		const std::vector<dd4hep::rec::LayeredCalorimeterStruct::Layer>& hcalBarrelLayers = _caloData->layers ;
-		const double CM2MM = 10.;
-
-		cellSize = hcalBarrelLayers[_trueLayer].cellSize0 * CM2MM ;
-		cellSize = 10.0 ; //temp
+		if ( _cellSize > 0.0f )
+		{
+			cellSize = _cellSize ;
+		}
+		else
+		{
+			const std::vector<dd4hep::rec::LayeredCalorimeterStruct::Layer>& hcalBarrelLayers = _caloData->layers ;
+			cellSize = hcalBarrelLayers[_trueLayer].cellSize0 * CM2MM ;
+		}
 	}
 
 	//streamlog_out( MESSAGE ) << "cellSize: " << cellSize << endl;
@@ -623,8 +615,8 @@ float SimDigitalGeomCellIdMOKKA::getCellSize()
 {
 	float cellSize = 0.f ;
 
-	if(_layerLayout != nullptr)
-		cellSize = _layerLayout->getCellSize0(_trueLayer);
+	if ( _layerLayout != nullptr )
+		cellSize = _layerLayout->getCellSize0(_trueLayer) ;
 
 	//streamlog_out( MESSAGE ) << "cellSize: " << cellSize << endl;
 

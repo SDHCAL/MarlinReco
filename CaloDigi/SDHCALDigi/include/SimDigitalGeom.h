@@ -44,6 +44,10 @@ class SimDigitalGeomCellId
 		virtual void setLayerLayout(CHT::Layout layout) = 0 ;
 
 		virtual std::vector<StepAndCharge> decode(SimCalorimeterHit* hit) = 0 ;
+	protected :
+		void createStepAndChargeVec(SimCalorimeterHit* hit , std::vector<StepAndCharge>& vec) ;
+
+	public :
 		virtual void encode(CalorimeterHitImpl *hit , int delta_I , int delta_J) = 0 ;
 
 
@@ -114,7 +118,7 @@ class SimDigitalGeomCellIdLCGEO : public SimDigitalGeomCellId
 		SimDigitalGeomCellIdLCGEO(LCCollection* inputCol, LCCollectionVec* outputCol) ;
 		virtual ~SimDigitalGeomCellIdLCGEO() ;
 
-
+		void setCellSize(float size) { _cellSize = size ; }
 		virtual float getCellSize() ;
 		virtual void setLayerLayout(CHT::Layout layout) ;
 
@@ -127,6 +131,8 @@ class SimDigitalGeomCellIdLCGEO : public SimDigitalGeomCellId
 	protected :
 
 		std::vector<std::string> _encodingString = { "layer", "stave", "module", "tower", "x", "y" } ;
+
+		float _cellSize = 10.0f ;
 
 		dd4hep::rec::LayeredCalorimeterData* _caloData = nullptr ;
 

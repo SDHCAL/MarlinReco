@@ -155,6 +155,8 @@ class SimDigital : public Processor
 		std::map<std::string, int> _counters {} ;
 		std::vector<float> _thresholdHcal {} ;
 
+		float _cellSize = 0 ;
+
 		//charge spreader
 		std::string chargeSpreaderOption = "Uniform" ;
 		ChargeSpreaderParameters chargeSpreaderParameters ;

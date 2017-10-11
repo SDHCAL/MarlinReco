@@ -15,7 +15,7 @@ class EfficiencyManager
 		EfficiencyManager() ;
 		virtual ~EfficiencyManager() ;
 
-		virtual float getEfficiency(const SimDigitalGeomCellId& cellID) = 0 ;
+		virtual float getEfficiency(SimDigitalGeomCellId* cellID) = 0 ;
 } ;
 
 class UniformEfficiency : public EfficiencyManager
@@ -25,7 +25,7 @@ class UniformEfficiency : public EfficiencyManager
 		virtual ~UniformEfficiency() ;
 
 
-		virtual float getEfficiency(const SimDigitalGeomCellId& cellID) ;
+		virtual float getEfficiency(SimDigitalGeomCellId* cellID) ;
 
 	protected :
 		float value ;
@@ -37,7 +37,7 @@ class AsicEfficiency : public UniformEfficiency
 		AsicEfficiency(std::string fileName , float globalVal = 1.0) ;
 		virtual ~AsicEfficiency() ;
 
-		virtual float getEfficiency(const SimDigitalGeomCellId& cellID) ;
+		virtual float getEfficiency(SimDigitalGeomCellId* cellID) ;
 
 	protected :
 		void readFile(std::string fileName) ;

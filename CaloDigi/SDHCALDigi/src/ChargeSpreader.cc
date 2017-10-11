@@ -19,7 +19,7 @@ ChargeSpreader::ChargeSpreader()
 ChargeSpreader::~ChargeSpreader()
 {}
 
-void ChargeSpreader::addCharge(double charge, double posI, double posJ , const SimDigitalGeomCellId& )
+void ChargeSpreader::addCharge(double charge, double posI, double posJ , SimDigitalGeomCellId* )
 {
 	if ( parameters.padSeparation > parameters.cellSize )
 		return ;
@@ -180,17 +180,17 @@ void ExactSpreaderPerAsic::readFile(std::string fileName)
 	file->Close() ;
 }
 
-void ExactSpreaderPerAsic::addCharge(double charge, double posI, double posJ, const SimDigitalGeomCellId& cellID)
+void ExactSpreaderPerAsic::addCharge(double charge, double posI, double posJ, SimDigitalGeomCellId* cellID)
 {
 	//	int asicKey = (cellID.I()-1)/8 + ((cellID.J()-1)/8)*12 + cellID.K()*1000 ;
 
-	AsicKey asicKey(cellID.K() , (cellID.I()-1)/8 , (cellID.J()-1)/8) ;
+	AsicKey asicKey(cellID->K() , (cellID->I()-1)/8 , (cellID->J()-1)/8) ;
 
 	std::map<AsicKey, double >::iterator it = dMap.find( asicKey ) ;
 
 	if ( it == dMap.end() )
 	{
-		it = dMap.find( AsicKey( cellID.K() ) ) ; //else search for layer mul
+		it = dMap.find( AsicKey( cellID->K() ) ) ; //else search for layer mul
 		if ( it == dMap.end() )
 			parameters.d = dGlobal ;
 		else

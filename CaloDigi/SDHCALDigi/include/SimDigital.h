@@ -66,7 +66,6 @@ using namespace marlin ;
  *  @version $Id$
  */
 
-class SimDigitalGeomRPCFrame ;
 
 struct StepAndCharge
 {
@@ -100,9 +99,7 @@ struct AsicKey
 		{
 			return ( this->layerID == b.layerID ) && ( this->asicI == b.asicI ) && ( this->asicJ == b.asicJ ) ;
 		}
-
 } ;
-
 
 
 
@@ -144,7 +141,7 @@ class SimDigital : public Processor
 
 
 		void processCollection(LCCollection* inputCol , LCCollectionVec*& outputCol , LCCollectionVec*& outputRelCol , CHT::Layout layout, LCFlagImpl& flag) ;
-		void createPotentialOutputHits(cellIDHitMap& myHitMap , LCCollection* col , SimDigitalGeomCellId& aGeomCellId) ;
+		void createPotentialOutputHits(cellIDHitMap& myHitMap , LCCollection* col , SimDigitalGeomCellId* aGeomCellId) ;
 
 		void removeAdjacentStep(std::vector<StepAndCharge>& vec) ;
 		void fillTupleStep(std::vector<StepAndCharge>& vec , int level) ;

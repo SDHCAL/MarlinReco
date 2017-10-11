@@ -37,7 +37,7 @@ class ChargeSpreader
 		virtual void init() = 0 ;
 
 		typedef std::pair<int,int> I_J_Coordinates ;
-		virtual void addCharge( double charge , double posI , double posJ , const SimDigitalGeomCellId& ) ;
+		virtual void addCharge( double charge , double posI , double posJ , SimDigitalGeomCellId* ) ;
 		void newHit(float cellSize_) { chargeMap.clear() ; parameters.cellSize = cellSize_ ; }
 
 		const std::map<I_J_Coordinates,double>& getChargeMap() const { return chargeMap ; }
@@ -88,7 +88,7 @@ class ExactSpreaderPerAsic : public ExactSpreader
 
 		virtual void setParameters(ChargeSpreaderParameters param) { parameters = param ; dGlobal = parameters.d ; }
 
-		virtual void addCharge(double charge, double posI, double posJ , const SimDigitalGeomCellId& cellID) ;
+		virtual void addCharge(double charge, double posI, double posJ , SimDigitalGeomCellId* cellID) ;
 
 	protected :
 

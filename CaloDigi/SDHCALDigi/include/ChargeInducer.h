@@ -17,7 +17,7 @@ class ChargeInducer
 	public :
 		ChargeInducer() ;
 		virtual ~ChargeInducer() ;
-		virtual double getCharge(const SimDigitalGeomCellId& cellID) = 0 ;
+		virtual double getCharge(SimDigitalGeomCellId* cellID) = 0 ;
 
 		void setSeed(unsigned int value) ;
 
@@ -31,7 +31,7 @@ class UniformPolya : public ChargeInducer
 		UniformPolya(double _qbar , double _theta) ;
 		~UniformPolya() ;
 
-		virtual double getCharge(const SimDigitalGeomCellId& cellID) ;
+		virtual double getCharge(SimDigitalGeomCellId* cellID) ;
 
 
 	protected :
@@ -45,7 +45,7 @@ class AsicPolya : public UniformPolya
 		AsicPolya(double _qbar , double _theta , std::string fileName) ;
 		~AsicPolya() ;
 
-		virtual double getCharge(const SimDigitalGeomCellId& cellID) ;
+		virtual double getCharge(SimDigitalGeomCellId* cellID) ;
 
 
 	protected :

@@ -199,12 +199,7 @@ void SimDigital::init()
 	// check that number of input and output collections names are the same
 	assert ( _outputCollections.size() == _inputCollections.size() ) ;
 	assert ( _outputRelCollections.size() == _inputCollections.size() ) ;
-
-	//streamlog_out( DEBUG ) << "SimDigital: init" << std::endl;
-
-	SimDigitalGeomCellId::setEncodingType(_encodingType) ;
-	SimDigitalGeomCellId::setHcalOption(_hcalOption) ;
-
+	assert ( _encodingType == std::string("LCGEO") || _encodingType == std::string("MOKKA") ) ;
 
 	//init charge inducer
 	if ( polyaOption == std::string("Uniform") )
@@ -319,16 +314,16 @@ void SimDigital::fillTupleStep(std::vector<StepAndCharge>& vec,int level)
 	}
 }
 
-void SimDigital::createPotentialOutputHits(cellIDHitMap& myHitMap, LCCollection* col, SimDigitalGeomCellId& aGeomCellId )
+void SimDigital::createPotentialOutputHits(cellIDHitMap& myHitMap, LCCollection* col, SimDigitalGeomCellId* aGeomCellId)
 {
 	int numElements = col->getNumberOfElements() ;
 	for (int j = 0 ; j < numElements ; ++j )
 	{
 		SimCalorimeterHit* hit = dynamic_cast<SimCalorimeterHit*>( col->getElementAt( j ) ) ;
-		std::vector<StepAndCharge> steps = aGeomCellId.decode(hit) ;
+		std::vector<StepAndCharge> steps = aGeomCellId->decode(hit) ;
 		fillTupleStep(steps,0) ;
 
-		float cellSize = aGeomCellId.getCellSize() ;
+		float cellSize = aGeomCellId->getCellSize() ;
 
 		chargeSpreader->newHit(cellSize) ;
 
@@ -376,7 +371,7 @@ void SimDigital::createPotentialOutputHits(cellIDHitMap& myHitMap, LCCollection*
 			if (it.second >= 0)
 			{
 				CalorimeterHitImpl* tmp = new CalorimeterHitImpl() ;
-				aGeomCellId.encode(tmp , it.first.first , it.first.second) ;
+				aGeomCellId->encode(tmp , it.first.first , it.first.second) ;
 
 				dd4hep::long64 index = tmp->getCellID1() ;
 				index = index << 32 ;
@@ -462,9 +457,14 @@ void SimDigital::processCollection(LCCollection* inputCol , LCCollectionVec*& ou
 	outputCol->setFlag(flag.getFlag()) ;
 	cellIDHitMap myHitMap ;
 
-	SimDigitalGeomCellId g(inputCol,outputCol) ;
-	g.setLayerLayout(layout) ;
-	createPotentialOutputHits(myHitMap,inputCol, g ) ;
+	SimDigitalGeomCellId* geomCellId = nullptr ;
+	if ( _encodingType == std::string("LCGEO") )
+		geomCellId = new SimDigitalGeomCellIdLCGEO(inputCol,outputCol) ;
+	else if ( _encodingType == std::string("MOKKA") )
+		geomCellId = new SimDigitalGeomCellIdMOKKA(inputCol,outputCol) ;
+
+	geomCellId->setLayerLayout(layout) ;
+	createPotentialOutputHits(myHitMap , inputCol , geomCellId) ;
 	removeHitsBelowThreshold(myHitMap , _thresholdHcal.at(0) ) ;
 
 	if (_doThresholds)
@@ -482,19 +482,20 @@ void SimDigital::processCollection(LCCollection* inputCol , LCCollectionVec*& ou
 		}
 		outputCol->addElement(currentHitMem.ahit) ;
 
-		SimCalorimeterHit* hit = dynamic_cast<SimCalorimeterHit*>( inputCol->getElementAt( *currentHitMem.relatedHits.begin() ) ) ;
+		//put only one relation with the SimCalorimeterHit which contributes most
+		SimCalorimeterHit* hit = dynamic_cast<SimCalorimeterHit*>( inputCol->getElementAt( currentHitMem.rawHit ) ) ;
 		LCRelationImpl* rel = new LCRelationImpl(hit , currentHitMem.ahit , 1.0) ;
 		outputRelCol->addElement( rel ) ;
 
 //		for (std::set<int>::iterator itset = currentHitMem.relatedHits.begin() ; itset != currentHitMem.relatedHits.end() ; itset++)
 //		{
 //			SimCalorimeterHit* hit = dynamic_cast<SimCalorimeterHit*>( inputCol->getElementAt( *itset ) ) ;
-//			LCRelationImpl* rel = new LCRelationImpl(currentHitMem.ahit,hit,1.0) ;
+//			LCRelationImpl* rel = new LCRelationImpl(hit , currentHitMem.ahit , 1.0) ;
 //			outputRelCol->addElement( rel ) ;
 //		}
-
-
 	} //end of loop on myHitMap
+
+	delete geomCellId ;
 }
 
 void SimDigital::processEvent( LCEvent* evt )

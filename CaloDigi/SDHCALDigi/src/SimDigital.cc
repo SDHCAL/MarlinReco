@@ -69,21 +69,20 @@ SimDigital::SimDigital()
 	registerInputCollections( LCIO::SIMCALORIMETERHIT,
 							  "inputHitCollections" ,
 							  "Sim Calorimeter Hit Collections" ,
-							  _hcalCollections ,
+							  _inputCollections ,
 							  hcalCollections) ;
 
 	std::vector<std::string> outputHcalCollections = { "HCALBarrelDigi" , "HCALEndcapDigi" , "HCALOtherDigi" } ;
 	registerProcessorParameter( "outputHitCollections",
 								"output hit collection names",
-								_outputHcalCollections,
+								_outputCollections,
 								outputHcalCollections) ;
 
-	registerOutputCollection( LCIO::LCRELATION,
-							  "RelationOutputCollection" ,
-							  "CaloHit Relation Collection" ,
-							  _outputRelCollection ,
-							  std::string("RelationCaloHit")) ;
-
+	std::vector<std::string> outputRelCollections = {} ;
+	registerProcessorParameter( "outputRelationCollections",
+								"output hit relation Collection Names" ,
+								_outputRelCollections ,
+								outputRelCollections ) ;
 
 
 	std::vector<float> hcalThresholds = {0.1f} ;
@@ -196,6 +195,11 @@ SimDigital::SimDigital()
 
 void SimDigital::init()
 {
+	printParameters() ;
+	// check that number of input and output collections names are the same
+	assert ( _outputCollections.size() == _inputCollections.size() ) ;
+	assert ( _outputRelCollections.size() == _inputCollections.size() ) ;
+
 	//streamlog_out( DEBUG ) << "SimDigital: init" << std::endl;
 
 	SimDigitalGeomCellId::setEncodingType(_encodingType) ;
@@ -256,38 +260,6 @@ void SimDigital::init()
 	streamlog_out(DEBUG) << "Tuple for collection stat has been initialized to " << _tupleCollection << std::endl;
 	streamlog_out(DEBUG) << "it has " << _tupleCollection->columns() << " columns" <<std::endl;
 }
-
-
-void SimDigital::processHCAL(LCEvent* evt, LCFlagImpl& flag)
-{
-	depositedEnergyInRPC = 0.0f ;
-	streamlog_out( DEBUG )<< "hcalCollections size = "<< _hcalCollections.size() << endl;
-	for (unsigned int i(0) ; i < _hcalCollections.size() ; ++i)
-	{
-		try
-		{
-			std::string colName =  _hcalCollections.at(i) ;
-			//streamlog_out( DEBUG )<< "colName[i] = "<< colName <<" "<< i << endl;
-			//CHT::Layout layout1 = layoutFromString( colName );
-			LCCollection * col = evt->getCollection( colName.c_str() ) ;
-			//CHT::Layout layout2 = layoutFromString( colName );
-			_counters["NSim"]+=col->getNumberOfElements();
-			CHT::Layout layout = layoutFromString( colName );
-			LCCollectionVec *hcalcol = processHCALCollection(col,layout,flag);
-			//streamlog_out( DEBUG ) << " ------ " << hcalcol << std::endl;
-			//streamlog_out( DEBUG )<< " CHT::any,barrel,encap, ring " << CHT::any<<" "<<CHT::barrel<<" "<<CHT::endcap<<" "<< CHT::ring<< endl;
-			_counters["NReco"]+=hcalcol->getNumberOfElements();
-			evt->addCollection(hcalcol,_outputHcalCollections.at(i).c_str());
-		}
-		catch(DataNotAvailableException& )
-		{
-		}
-	}
-	evt->parameters().setValue("totalVisibleEnergy" , depositedEnergyInRPC) ;
-}
-
-
-
 
 void SimDigital::removeAdjacentStep(std::vector<StepAndCharge>& vec)
 {
@@ -353,7 +325,6 @@ void SimDigital::createPotentialOutputHits(cellIDHitMap& myHitMap, LCCollection*
 	for (int j = 0 ; j < numElements ; ++j )
 	{
 		SimCalorimeterHit* hit = dynamic_cast<SimCalorimeterHit*>( col->getElementAt( j ) ) ;
-		depositedEnergyInRPC += hit->getEnergy()/1e6 ;
 		std::vector<StepAndCharge> steps = aGeomCellId.decode(hit) ;
 		fillTupleStep(steps,0) ;
 
@@ -483,17 +454,17 @@ void SimDigital::applyThresholds(cellIDHitMap& myHitMap)
 	}
 }
 
-LCCollectionVec* SimDigital::processHCALCollection(LCCollection* col, CHT::Layout layout, LCFlagImpl& flag)
+void SimDigital::processCollection(LCCollection* inputCol , LCCollectionVec*& outputCol , LCCollectionVec*& outputRelCol , CHT::Layout layout, LCFlagImpl& flag)
 {
-	LCCollectionVec* hcalcol = new LCCollectionVec(LCIO::CALORIMETERHIT) ;
-	hcalcol->setFlag(flag.getFlag()) ;
+	outputCol = new LCCollectionVec(LCIO::CALORIMETERHIT) ;
+	outputRelCol = new LCCollectionVec(LCIO::LCRELATION) ;
+
+	outputCol->setFlag(flag.getFlag()) ;
 	cellIDHitMap myHitMap ;
 
-	//  streamlog_out( DEBUG )<<"LCCollectionVec * SimDigital::processHCALCollection: layout= "<< layout<< endl;
-
-	SimDigitalGeomCellId g(col,hcalcol);
+	SimDigitalGeomCellId g(inputCol,outputCol) ;
 	g.setLayerLayout(layout) ;
-	createPotentialOutputHits(myHitMap,col, g ) ;
+	createPotentialOutputHits(myHitMap,inputCol, g ) ;
 	removeHitsBelowThreshold(myHitMap , _thresholdHcal.at(0) ) ;
 
 	if (_doThresholds)
@@ -506,23 +477,27 @@ LCCollectionVec* SimDigital::processHCALCollection(LCCollection* col, CHT::Layou
 		if (currentHitMem.rawHit != -1)
 		{
 			streamlog_out(DEBUG) << " rawHit= " << currentHitMem.rawHit << std::endl ;
-			SimCalorimeterHit* hitraw = dynamic_cast<SimCalorimeterHit*>( col->getElementAt( currentHitMem.rawHit ) ) ;
+			SimCalorimeterHit* hitraw = dynamic_cast<SimCalorimeterHit*>( inputCol->getElementAt( currentHitMem.rawHit ) ) ;
 			currentHitMem.ahit->setRawHit(hitraw) ;
 		}
-		hcalcol->addElement(currentHitMem.ahit) ;
-		for (std::set<int>::iterator itset = currentHitMem.relatedHits.begin() ; itset != currentHitMem.relatedHits.end() ; itset++)
-		{
-			SimCalorimeterHit* hit = dynamic_cast<SimCalorimeterHit*>( col->getElementAt( *itset ) ) ;
-			LCRelationImpl* rel = new LCRelationImpl(currentHitMem.ahit,hit,1.0) ;
-			_relcol->addElement( rel ) ;
-		}
-	} //end of loop on myHitMap
+		outputCol->addElement(currentHitMem.ahit) ;
 
-	// add HCAL collection to event
-	return hcalcol ;
+		SimCalorimeterHit* hit = dynamic_cast<SimCalorimeterHit*>( inputCol->getElementAt( *currentHitMem.relatedHits.begin() ) ) ;
+		LCRelationImpl* rel = new LCRelationImpl(hit , currentHitMem.ahit , 1.0) ;
+		outputRelCol->addElement( rel ) ;
+
+//		for (std::set<int>::iterator itset = currentHitMem.relatedHits.begin() ; itset != currentHitMem.relatedHits.end() ; itset++)
+//		{
+//			SimCalorimeterHit* hit = dynamic_cast<SimCalorimeterHit*>( inputCol->getElementAt( *itset ) ) ;
+//			LCRelationImpl* rel = new LCRelationImpl(currentHitMem.ahit,hit,1.0) ;
+//			outputRelCol->addElement( rel ) ;
+//		}
+
+
+	} //end of loop on myHitMap
 }
 
-void SimDigital::processEvent( LCEvent * evt )
+void SimDigital::processEvent( LCEvent* evt )
 {
 	if( isFirstEvent() )
 		SimDigitalGeomCellId::bookTuples(this) ;
@@ -534,20 +509,42 @@ void SimDigital::processEvent( LCEvent * evt )
 	_counters["N2"]=0;
 	_counters["N3"]=0;
 
-	// create the output collections
-	_relcol = new LCCollectionVec(LCIO::LCRELATION);
 
 	/////////////////for ECAL---------------------------------------------------
 	// copy the flags from the input collection
 	//GG : it should be checked why we put the flag like this.
-	LCFlagImpl flag;
-	flag.setBit(LCIO::CHBIT_LONG);
-	flag.setBit(LCIO::RCHBIT_ENERGY_ERROR);    //open the energy error flag to store the MC Truth (for easy comparison == not a eligent way!!)
+	LCFlagImpl flag ;
+	flag.setBit(LCIO::CHBIT_LONG) ;
+	flag.setBit(LCIO::RCHBIT_TIME);
+	flag.setBit(LCIO::RCHBIT_ENERGY_ERROR) ;    //open the energy error flag to store the MC Truth (for easy comparison == not a eligent way!!)
 
-	processHCAL(evt,flag);
 
+	for (unsigned int i(0) ; i < _inputCollections.size() ; ++i)
+	{
+		try
+		{
+			std::string inputColName = _inputCollections.at(i) ;
+			std::string outputColName = _outputCollections.at(i) ;
+			std::string outputRelColName = _outputRelCollections.at(i) ;
 
-	evt->addCollection(_relcol,_outputRelCollection.c_str());
+			LCCollection* inputCol = evt->getCollection( inputColName.c_str() ) ;
+			_counters["NSim"] += inputCol->getNumberOfElements() ;
+			CHT::Layout layout = layoutFromString( inputColName ) ;
+
+			LCCollectionVec* outputCol = nullptr ;
+			LCCollectionVec* outputRelCol = nullptr ;
+
+			processCollection(inputCol , outputCol , outputRelCol , layout , flag) ;
+
+			_counters["NReco"] += outputCol->getNumberOfElements() ;
+
+			evt->addCollection(outputCol , outputColName.c_str()) ;
+			evt->addCollection(outputRelCol , outputRelColName.c_str()) ;
+		}
+		catch(DataNotAvailableException& )
+		{
+		}
+	}
 
 	_tupleCollection->fill(0,_counters["NSim"]);
 	_tupleCollection->fill(1,_counters["NReco"]);

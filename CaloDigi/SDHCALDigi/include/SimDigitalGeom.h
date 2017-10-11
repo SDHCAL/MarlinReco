@@ -44,7 +44,7 @@ class SimDigitalGeomCellId
 
 	public:
 		static void bookTuples(const marlin::Processor* proc);
-		SimDigitalGeomCellId(LCCollection *inputCol, LCCollectionVec *outputCol);
+		SimDigitalGeomCellId(LCCollection* inputCol, LCCollectionVec* outputCol) ;
 		~SimDigitalGeomCellId();
 		//return the list of step positions in coordinates corresponding to 'I' ,'J' and 'layer'
 		std::vector<StepAndCharge> decode(SimCalorimeterHit *hit) ;

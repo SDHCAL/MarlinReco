@@ -132,7 +132,7 @@ class SimDigitalGeomCellIdLCGEO : public SimDigitalGeomCellId
 
 		std::vector<std::string> _encodingString = { "layer", "stave", "module", "tower", "x", "y" } ;
 
-		float _cellSize = 10.0f ;
+		float _cellSize = 0.0f ;
 
 		dd4hep::rec::LayeredCalorimeterData* _caloData = nullptr ;
 

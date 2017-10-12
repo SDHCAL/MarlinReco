@@ -66,18 +66,18 @@ using namespace marlin ;
  *  @version $Id$
  */
 
-class SimDigitalGeomRPCFrame ;
 
 struct StepAndCharge
 {
 		StepAndCharge()
 			: step()
 		{}
-		StepAndCharge(LCVector3D vec)
-			: step(vec)
+		StepAndCharge(LCVector3D vec , float _time)
+			: step(vec) , time(_time)
 		{}
 		LCVector3D step ;
 		double charge = 0 ;
+		float time = 0 ;
 } ;
 
 struct AsicKey
@@ -100,9 +100,7 @@ struct AsicKey
 		{
 			return ( this->layerID == b.layerID ) && ( this->asicI == b.asicI ) && ( this->asicJ == b.asicJ ) ;
 		}
-
 } ;
-
 
 
 
@@ -143,25 +141,22 @@ class SimDigital : public Processor
 		typedef std::map<dd4hep::long64, hitMemory> cellIDHitMap ;
 
 
-		void processHCAL(LCEvent* evt, LCFlagImpl& flag) ;
-		LCCollectionVec* processHCALCollection(LCCollection* col , CHT::Layout layout , LCFlagImpl& flag) ;
-		void createPotentialOutputHits(cellIDHitMap& myHitMap , LCCollection* col , SimDigitalGeomCellId& aGeomCellId) ;
+		void processCollection(LCCollection* inputCol , LCCollectionVec*& outputCol , LCCollectionVec*& outputRelCol , CHT::Layout layout, LCFlagImpl& flag) ;
+		void createPotentialOutputHits(cellIDHitMap& myHitMap , LCCollection* col , SimDigitalGeomCellId* aGeomCellId) ;
 
 		void removeAdjacentStep(std::vector<StepAndCharge>& vec) ;
 		void fillTupleStep(std::vector<StepAndCharge>& vec , int level) ;
 		void removeHitsBelowThreshold(cellIDHitMap& myHitMap , float threshold) ;
 		void applyThresholds(cellIDHitMap& myHitMap) ;
 
+		std::vector<std::string> _inputCollections {} ;
+		std::vector<std::string> _outputCollections {} ;
+		std::vector<std::string> _outputRelCollections {} ;
 
-		std::vector<std::string> _hcalCollections {} ;
-		std::vector<std::string> _outputHcalCollections {} ;
 		std::map<std::string, int> _counters {} ;
 		std::vector<float> _thresholdHcal {} ;
-		std::string _outputRelCollection = "" ;
 
-		LCCollectionVec* _relcol = nullptr ;
-
-		float depositedEnergyInRPC = 0.0f ;
+		float _cellSize = 0 ;
 
 		//charge spreader
 		std::string chargeSpreaderOption = "Uniform" ;
@@ -188,10 +183,8 @@ class SimDigital : public Processor
 		AIDA::ITuple* _tupleStepFilter = nullptr ;
 		AIDA::ITuple* _tupleCollection = nullptr ;
 
-
 		std::string _encodingType  = "LCGEO" ;
 		std::string _hcalOption = "VIDEAU" ;
-
 } ;
 
 #endif

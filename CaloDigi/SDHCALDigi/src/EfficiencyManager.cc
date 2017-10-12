@@ -23,7 +23,7 @@ UniformEfficiency::~UniformEfficiency()
 {
 }
 
-float UniformEfficiency::getEfficiency(const SimDigitalGeomCellId&)
+float UniformEfficiency::getEfficiency(SimDigitalGeomCellId*)
 {
 	return value ;
 }
@@ -87,16 +87,16 @@ void AsicEfficiency::readFile(std::string fileName)
 	file->Close() ;
 }
 
-float AsicEfficiency::getEfficiency(const SimDigitalGeomCellId& cellID)
+float AsicEfficiency::getEfficiency(SimDigitalGeomCellId* cellID)
 {
 //	int asicKey = (cellID.I()-1)/8 + ((cellID.J()-1)/8)*12 + cellID.K()*1000 ;
-	AsicKey asicKey(cellID.K() , (cellID.I()-1)/8 , (cellID.J()-1)/8) ;
+	AsicKey asicKey(cellID->K() , (cellID->I()-1)/8 , (cellID->J()-1)/8) ;
 
 	std::map<AsicKey,float>::const_iterator it = effMap.find( asicKey ) ;
 
 	if ( it == effMap.end() )
 	{
-		it = effMap.find( AsicKey( cellID.K() ) ) ; //else search for layer mul
+		it = effMap.find( AsicKey( cellID->K() ) ) ; //else search for layer mul
 		if ( it == effMap.end() )
 			return value ;
 		else

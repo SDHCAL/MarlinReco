@@ -35,7 +35,7 @@ UniformPolya::UniformPolya(double _qbar , double _theta)
 UniformPolya::~UniformPolya()
 {}
 
-double UniformPolya::getCharge(const SimDigitalGeomCellId& )
+double UniformPolya::getCharge(SimDigitalGeomCellId*)
 {
 	return gammadist(generator) ;
 }
@@ -105,16 +105,16 @@ void AsicPolya::readFile(std::string fileName)
 	file->Close() ;
 }
 
-double AsicPolya::getCharge(const SimDigitalGeomCellId& cellID)
+double AsicPolya::getCharge(SimDigitalGeomCellId* cellID)
 {
 	//	int asicKey = (cellID.I()-1)/8 + ((cellID.J()-1)/8)*12 + cellID.K()*1000 ;
-	AsicKey asicKey(cellID.K() , (cellID.I()-1)/8 , (cellID.J()-1)/8) ;
+	AsicKey asicKey(cellID->K() , (cellID->I()-1)/8 , (cellID->J()-1)/8) ;
 
 	std::map<AsicKey, boost::gamma_distribution<double> >::iterator it = polyaMap.find( asicKey ) ;
 
 	if ( it == polyaMap.end() )
 	{
-		it = polyaMap.find( AsicKey( cellID.K() ) ) ; //else search for layer polya
+		it = polyaMap.find( AsicKey( cellID->K() ) ) ; //else search for layer polya
 		if ( it == polyaMap.end() )
 			return gammadist(generator) ;
 		else

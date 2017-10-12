@@ -72,11 +72,12 @@ struct StepAndCharge
 		StepAndCharge()
 			: step()
 		{}
-		StepAndCharge(LCVector3D vec)
-			: step(vec)
+		StepAndCharge(LCVector3D vec , float _time)
+			: step(vec) , time(_time)
 		{}
 		LCVector3D step ;
 		double charge = 0 ;
+		float time = 0 ;
 } ;
 
 struct AsicKey

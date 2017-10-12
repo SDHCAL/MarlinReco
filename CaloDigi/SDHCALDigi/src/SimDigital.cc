@@ -241,7 +241,7 @@ void SimDigital::init()
 	//book tuples
 	_debugTupleStepFilter  = AIDAProcessor::tupleFactory( this )->create("SimDigitalStepDebug",
 																		 "SimDigital_StepDebug",
-																		 "int filterlevel, float deltaI,deltaJ,deltaLayer,minIJdist,charge");
+																		 "int filterlevel, float stepTime,deltaI,deltaJ,deltaLayer,minIJdist,charge");
 	streamlog_out(DEBUG) << "Tuple for step debug has been initialized to " << _debugTupleStepFilter << std::endl;
 	streamlog_out(DEBUG) << "it has " << _debugTupleStepFilter->columns() << " columns" <<std::endl;
 
@@ -300,9 +300,10 @@ void SimDigital::fillTupleStep(std::vector<StepAndCharge>& vec,int level)
 	for (std::vector<StepAndCharge>::iterator it=vec.begin(); it != vec.end(); it++)
 	{
 		_debugTupleStepFilter->fill(0,level);
-		_debugTupleStepFilter->fill(1,it->step.x());
-		_debugTupleStepFilter->fill(2,it->step.y());
-		_debugTupleStepFilter->fill(3,it->step.z());
+		_debugTupleStepFilter->fill(1,it->time) ;
+		_debugTupleStepFilter->fill(2,it->step.x()) ;
+		_debugTupleStepFilter->fill(3,it->step.y()) ;
+		_debugTupleStepFilter->fill(4,it->step.z()) ;
 		float minDist=20000;
 		for (std::vector<StepAndCharge>::iterator itB=vec.begin(); itB != vec.end(); itB++)
 		{
@@ -312,9 +313,9 @@ void SimDigital::fillTupleStep(std::vector<StepAndCharge>& vec,int level)
 			if (dist < minDist)
 				minDist=dist ;
 		}
-		_debugTupleStepFilter->fill(4,minDist);
-		_debugTupleStepFilter->fill(5,it->charge) ;
-		_debugTupleStepFilter->addRow();
+		_debugTupleStepFilter->fill(5,minDist);
+		_debugTupleStepFilter->fill(6,it->charge) ;
+		_debugTupleStepFilter->addRow() ;
 	}
 }
 
@@ -367,6 +368,11 @@ void SimDigital::createPotentialOutputHits(cellIDHitMap& myHitMap, LCCollection*
 		fillTupleStep(steps,3) ;
 		_tupleStepFilter->addRow() ;
 
+		float time = std::numeric_limits<float>::max() ;
+		for ( const auto& step : steps )
+			time = std::min(time , step.time) ;
+
+
 		for ( const StepAndCharge& itstep : steps )
 			chargeSpreader->addCharge( itstep.charge , itstep.step.x() , itstep.step.y() , aGeomCellId ) ;
 
@@ -390,6 +396,7 @@ void SimDigital::createPotentialOutputHits(cellIDHitMap& myHitMap, LCCollection*
 					hitMemory& toto = myHitMap[index] ;
 					toto.ahit = tmp ;
 					toto.ahit->setEnergy(0) ;
+					toto.ahit->setTime(time) ;
 				}
 
 				hitMemory& calhitMem = myHitMap.at(index) ;

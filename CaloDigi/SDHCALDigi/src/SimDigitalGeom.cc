@@ -22,13 +22,13 @@ void SimDigitalGeomCellId::bookTuples(const marlin::Processor* proc)
 {
 	_tupleHit  = AIDAProcessor::tupleFactory( proc )->create("SimDigitalGeom",
 															 "SimDigital_Debug",
-															 "int detector,chtlayout,module,tower,stave,layer,I,J, float x,y,z, normalx,normaly,normalz, Ix,Iy,Iz,Jx,Jy,Jz");
+															 "int chtlayout,module,tower,stave,layer,I,J, float x,y,z, normalx,normaly,normalz, Ix,Iy,Iz,Jx,Jy,Jz");
 	streamlog_out(DEBUG) << "Tuple for Hit has been initialized to " << _tupleHit << std::endl;
 	streamlog_out(DEBUG)<< "it has " << _tupleHit->columns() << " columns" <<std::endl;
 
 	_tupleStep = AIDAProcessor::tupleFactory( proc )->create("SimDigitalStep",
 															 "SimDigital_DebugStep",
-															 "int detector,chtlayout,hitcellid,nstep, float hitx,hity,hitz,stepx,stepy,stepz,deltaI,deltaJ,deltaLayer");
+															 "int chtlayout,hitcellid,nstep, float hitx,hity,hitz,stepx,stepy,stepz,deltaI,deltaJ,deltaLayer,time");
 	streamlog_out(DEBUG) << "Tuple for Step has been initialized to " << _tupleStep << std::endl;
 	streamlog_out(DEBUG) << "it has " << _tupleStep->columns() << " columns" <<std::endl;
 }
@@ -163,18 +163,19 @@ void SimDigitalGeomRPCFrame_VIDEAU_ENDCAP::setRPCFrame()
 
 void SimDigitalGeomCellId::createStepAndChargeVec(SimCalorimeterHit* hit , std::vector<StepAndCharge>& vec)
 {
-	LCVector3D hitpos;
+	LCVector3D hitpos ;
 	if (NULL != _hitPosition)
-		hitpos.set(_hitPosition[0],_hitPosition[1],_hitPosition[2]);
-	for (int imcp=0; imcp<hit->getNMCContributions(); imcp++)
+		hitpos.set(_hitPosition[0],_hitPosition[1],_hitPosition[2]) ;
+	for (int imcp = 0 ; imcp < hit->getNMCContributions() ; imcp++)
 	{
 		LCVector3D stepposvec;
-		const float* steppos=hit->getStepPosition(imcp);
-		if (NULL != steppos) stepposvec.set(steppos[0],steppos[1],steppos[2]);
+		const float* steppos = hit->getStepPosition(imcp) ;
+		if (NULL != steppos)
+			stepposvec.set(steppos[0],steppos[1],steppos[2]) ;
 		if (stepposvec.mag2() != 0)
 		{
-			stepposvec-=hitpos;
-			vec.push_back( StepAndCharge(LCVector3D(stepposvec*_Iaxis,stepposvec*_Jaxis,stepposvec*_normal)) );
+			stepposvec -= hitpos ;
+			vec.push_back( StepAndCharge(LCVector3D(stepposvec*_Iaxis,stepposvec*_Jaxis,stepposvec*_normal) , hit->getTimeCont(imcp)) );
 		}
 		else
 			streamlog_out(WARNING) << "DIGITISATION : STEP POSITION IS (0,0,0)" << std::endl;
@@ -182,7 +183,10 @@ void SimDigitalGeomCellId::createStepAndChargeVec(SimCalorimeterHit* hit , std::
 
 	//if no steps have been found, then put one step at the center of the cell :
 	if (vec.size() == 0)
-		vec.push_back(StepAndCharge(LCVector3D(0,0,0))) ;
+	{
+		streamlog_out(MESSAGE) << "no Steps in hit" << std::endl ;
+		//		vec.push_back(StepAndCharge(LCVector3D(0,0,0))) ;
+	}
 }
 
 
@@ -408,12 +412,12 @@ void SimDigitalGeomCellId::fillDebugTupleGeometryStep(SimCalorimeterHit* hit , c
 	{
 		int nsteps = hit->getNMCContributions() ;
 		float notset=-88888;
-		for (int imcp=0; imcp<nsteps; imcp++)
+		for (int imcp = 0 ; imcp<nsteps ; imcp++)
 		{
 			_tupleStep->fill(TS_CHTLAYOUT,int(_currentHCALCollectionCaloLayout));
 			_tupleStep->fill(TS_HITCELLID,hit->getCellID0());
 			_tupleStep->fill(TS_NSTEP,nsteps);
-			const float *steppos = hit->getStepPosition(imcp);
+			const float* steppos = hit->getStepPosition(imcp) ;
 			for (int i=0; i<3; i++)
 			{
 				if (_hitPosition != NULL )
@@ -421,22 +425,23 @@ void SimDigitalGeomCellId::fillDebugTupleGeometryStep(SimCalorimeterHit* hit , c
 				else
 					_tupleStep->fill(TS_HITX+i,notset);
 
-				if (steppos != NULL)
-				{
-					_tupleStep->fill(TS_STEPX+i,steppos[i]);
-				}
-				else
-				{
-					_tupleStep->fill(TS_STEPX+i,notset);
-				}
 
-				{
-					if (imcp < (int)stepsInIJZcoord.size() )
-						_tupleStep->fill(TS_DELTAI+i,stepsInIJZcoord[imcp].step[i]);
-					else
-						_tupleStep->fill(TS_DELTAI+i,notset);
-				}
+				if (steppos != NULL)
+					_tupleStep->fill(TS_STEPX+i,steppos[i]);
+				else
+					_tupleStep->fill(TS_STEPX+i,notset);
+
+
+				if (imcp < (int)stepsInIJZcoord.size() )
+					_tupleStep->fill(TS_DELTAI+i,stepsInIJZcoord[imcp].step[i]);
+				else
+					_tupleStep->fill(TS_DELTAI+i,notset);
 			}
+			if (imcp < (int)stepsInIJZcoord.size() )
+				_tupleStep->fill(TS_TIME,hit->getTimeCont(imcp)) ;
+			else
+				_tupleStep->fill(TS_TIME,notset) ;
+
 			_tupleStep->addRow() ;
 		}
 	}

@@ -109,7 +109,7 @@ class SimDigitalGeomCellId
 		enum {TS_CHTLAYOUT,TS_HITCELLID,TS_NSTEP,
 			  TS_HITX,TS_HITY,TS_HITZ,
 			  TS_STEPX,TS_STEPY,TS_STEPZ,
-			  TS_DELTAI,TS_DELTAJ,TS_DELTALAYER} ;
+			  TS_DELTAI,TS_DELTAJ,TS_DELTALAYER,TS_TIME} ;
 } ;
 
 class SimDigitalGeomCellIdLCGEO : public SimDigitalGeomCellId

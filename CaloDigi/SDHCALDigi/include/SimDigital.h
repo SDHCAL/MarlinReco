@@ -9,6 +9,8 @@
 #include <set>
 #include <utility>
 #include <limits>
+#include <memory>
+
 #include <stdlib.h>
 #include <EVENT/LCCollection.h>
 #include <EVENT/SimCalorimeterHit.h>
@@ -94,16 +96,11 @@ struct AsicKey
 
 		bool operator<(const AsicKey& b) const
 		{
-			if ( this->layerID != b.layerID )
-				return this->layerID < b.layerID ;
-			else if ( this->asicI != b.asicI )
-				return this->asicI < b.asicI ;
-			else
-				return this->asicJ < b.asicJ ;
+			return std::tie( layerID , asicI , asicJ ) < std::tie(b.layerID , b.asicI , b.asicJ ) ;
 		}
 		bool operator==(const AsicKey& b) const
 		{
-			return ( this->layerID == b.layerID ) && ( this->asicI == b.asicI ) && ( this->asicJ == b.asicJ ) ;
+			return std::tie( layerID , asicI , asicJ ) == std::tie(b.layerID , b.asicI , b.asicJ ) ;
 		}
 } ;
 
@@ -136,7 +133,8 @@ class SimDigital : public Processor
 					: ahit(nullptr) , relatedHits() , maxEnergydueToHit(-1) , rawHit(-1)
 				{}
 
-				CalorimeterHitImpl* ahit = nullptr ;
+				std::unique_ptr<CalorimeterHitImpl> ahit = nullptr ;
+
 				std::set<int> relatedHits {} ;
 				float maxEnergydueToHit = -1 ;
 				int rawHit = -1 ;
@@ -186,20 +184,22 @@ class SimDigital : public Processor
 		ChargeInducer* chargeInducer = nullptr ;
 		int _polyaRandomSeed = 1 ;
 
+		float _angleCorrPow = 0.4f ;
+
 		double timeCut = std::numeric_limits<double>::max() ;
 		double stepLengthCut = -1.0 ;
-		float _angleCorrPow = 0.4f ;
 
 		bool _doThresholds = true ;
 
 		std::string efficiencyOption  = "Uniform" ;
 		std::string effMapFile = "" ;
-		float _constEffMapValue = 0.97f ;
 		EfficiencyManager* efficiency = nullptr ;
+		float _constEffMapValue = 0.97f ;
 
 		float _absZstepFilter  = 0.0005f ;
 		float _minXYdistanceBetweenStep  = 0.5f ;
 		bool _keepAtLeastOneStep = true ;
+
 		AIDA::ITuple* _debugTupleStepFilter = nullptr ;
 		AIDA::ITuple* _tupleStepFilter = nullptr ;
 		AIDA::ITuple* _tupleCollection = nullptr ;

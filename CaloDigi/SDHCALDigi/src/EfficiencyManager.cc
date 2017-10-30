@@ -89,7 +89,6 @@ void AsicEfficiency::readFile(std::string fileName)
 
 float AsicEfficiency::getEfficiency(SimDigitalGeomCellId* cellID)
 {
-//	int asicKey = (cellID.I()-1)/8 + ((cellID.J()-1)/8)*12 + cellID.K()*1000 ;
 	AsicKey asicKey(cellID->K() , (cellID->I()-1)/8 , (cellID->J()-1)/8) ;
 
 	std::map<AsicKey,float>::const_iterator it = effMap.find( asicKey ) ;

@@ -61,9 +61,6 @@ class GaussianSpreader : public ChargeSpreader
 
 	protected :
 		virtual float computeIntegral(float x1 , float x2 , float y1 , float y2) const ;
-
-	//private :
-		//friend class SimDigital ;
 } ;
 
 class ExactSpreader : public ChargeSpreader
@@ -75,9 +72,6 @@ class ExactSpreader : public ChargeSpreader
 
 	protected :
 		float computeIntegral(float x1 , float x2 , float y1 , float y2) const ;
-
-	//private :
-		//friend class SimDigital ;
 } ;
 
 class ExactSpreaderPerAsic : public ExactSpreader
@@ -97,7 +91,6 @@ class ExactSpreaderPerAsic : public ExactSpreader
 
 
 		std::map<AsicKey,float> dMap ;
-
 } ;
 
 

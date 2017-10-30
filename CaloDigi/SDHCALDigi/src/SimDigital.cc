@@ -168,7 +168,6 @@ SimDigital::SimDigital()
 								_hcalOption,
 								std::string("VIDEAU")) ;
 
-	_doThresholds = true ;
 	registerOptionalParameter("doThresholds",
 							  "Replace analog hit energy by value given in CalibrHCAL according to thresholds given in HCALThreshold",
 							  _doThresholds,
@@ -207,11 +206,13 @@ SimDigital::SimDigital()
 								1.2f ) ;
 
 
+
+
+
 	registerProcessorParameter( "AngleCorrectionPower" ,
 								"Parameter for angle correction",
 								_angleCorrPow ,
 								0.4f ) ;
-
 
 	registerProcessorParameter( "TimeCut" ,
 								"Time cut",
@@ -222,6 +223,8 @@ SimDigital::SimDigital()
 								"Step length cut",
 								stepLengthCut ,
 								-1.0 ) ;
+
+
 
 
 
@@ -489,7 +492,7 @@ SimDigital::cellIDHitMap SimDigital::createPotentialOutputHits(LCCollection* col
 				else //create hit
 				{
 					hitMemory& toto = myHitMap[index] ;
-					toto.ahit = tmp ;
+					toto.ahit.reset(tmp) ;
 					toto.ahit->setEnergy(0) ;
 					toto.ahit->setTime(time) ;
 				}
@@ -498,12 +501,12 @@ SimDigital::cellIDHitMap SimDigital::createPotentialOutputHits(LCCollection* col
 
 				if (calhitMem.maxEnergydueToHit < it.second)
 				{
-					calhitMem.rawHit = j ; //for (int j(0); j < numElements; ++j)
-					calhitMem.maxEnergydueToHit = static_cast<float>( it.second ) ;
+					calhitMem.rawHit = j ;
+					calhitMem.maxEnergydueToHit = it.second ;
 				}
 
-				calhitMem.ahit->setEnergy( calhitMem.ahit->getEnergy() + static_cast<float>( it.second ) ) ;
-				calhitMem.relatedHits.insert(j) ; //for (int j(0); j < numElements; ++j)
+				calhitMem.ahit->setEnergy( calhitMem.ahit->getEnergy() + it.second ) ;
+				calhitMem.relatedHits.insert(j) ;
 			}
 			else
 			{
@@ -525,11 +528,7 @@ void SimDigital::removeHitsBelowThreshold(cellIDHitMap& myHitMap, float threshol
 	for ( auto it = myHitMap.cbegin() ; it != myHitMap.cend() ; )
 	{
 		if ( (it->second).ahit->getEnergy() < threshold )
-		{
-			delete it->second.ahit ;
 			it = myHitMap.erase(it) ;
-		}
-
 		else
 			++it ;
 	}
@@ -601,19 +600,15 @@ void SimDigital::processCollection(LCCollection* inputCol , LCCollectionVec*& ou
 			SimCalorimeterHit* hitraw = dynamic_cast<SimCalorimeterHit*>( inputCol->getElementAt( currentHitMem.rawHit ) ) ;
 			currentHitMem.ahit->setRawHit(hitraw) ;
 		}
-		outputCol->addElement(currentHitMem.ahit) ;
+
+		auto caloHit = currentHitMem.ahit.release() ;
+		outputCol->addElement(caloHit) ;
 
 		//put only one relation with the SimCalorimeterHit which contributes most
 		SimCalorimeterHit* hit = dynamic_cast<SimCalorimeterHit*>( inputCol->getElementAt( currentHitMem.rawHit ) ) ;
-		LCRelationImpl* rel = new LCRelationImpl(hit , currentHitMem.ahit , 1.0) ;
+		LCRelationImpl* rel = new LCRelationImpl(hit , caloHit , 1.0) ;
 		outputRelCol->addElement( rel ) ;
 
-		//		for (std::set<int>::iterator itset = currentHitMem.relatedHits.begin() ; itset != currentHitMem.relatedHits.end() ; itset++)
-		//		{
-		//			SimCalorimeterHit* hit = dynamic_cast<SimCalorimeterHit*>( inputCol->getElementAt( *itset ) ) ;
-		//			LCRelationImpl* rel = new LCRelationImpl(hit , currentHitMem.ahit , 1.0) ;
-		//			outputRelCol->addElement( rel ) ;
-		//		}
 	} //end of loop on myHitMap
 
 	delete geomCellId ;

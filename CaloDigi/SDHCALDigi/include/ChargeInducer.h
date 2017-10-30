@@ -17,7 +17,7 @@ class ChargeInducer
 	public :
 		ChargeInducer() ;
 		virtual ~ChargeInducer() ;
-		virtual double getCharge(SimDigitalGeomCellId* cellID) = 0 ;
+		virtual float getCharge(SimDigitalGeomCellId* cellID) = 0 ;
 
 		void setSeed(unsigned int value) ;
 
@@ -28,30 +28,30 @@ class ChargeInducer
 class UniformPolya : public ChargeInducer
 {
 	public :
-		UniformPolya(double _qbar , double _theta) ;
+		UniformPolya(float _qbar , float _theta) ;
 		~UniformPolya() ;
 
-		virtual double getCharge(SimDigitalGeomCellId* cellID) ;
+		virtual float getCharge(SimDigitalGeomCellId* cellID) ;
 
 
 	protected :
-		boost::gamma_distribution<double> gammadist ;
+		boost::gamma_distribution<float> gammadist ;
 
 } ;
 
 class AsicPolya : public UniformPolya
 {
 	public :
-		AsicPolya(double _qbar , double _theta , std::string fileName) ;
+		AsicPolya(float _qbar , float _theta , std::string fileName) ;
 		~AsicPolya() ;
 
-		virtual double getCharge(SimDigitalGeomCellId* cellID) ;
+		virtual float getCharge(SimDigitalGeomCellId* cellID) ;
 
 
 	protected :
 		void readFile(std::string fileName) ;
 
-		std::map<AsicKey , boost::gamma_distribution<double> > polyaMap ;
+		std::map<AsicKey , boost::gamma_distribution<float> > polyaMap ;
 } ;
 
 #endif //ChargeInducer_h

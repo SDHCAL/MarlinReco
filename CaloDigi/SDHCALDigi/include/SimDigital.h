@@ -8,6 +8,7 @@
 #include <map>
 #include <set>
 #include <utility>
+#include <limits>
 #include <stdlib.h>
 #include <EVENT/LCCollection.h>
 #include <EVENT/SimCalorimeterHit.h>
@@ -28,6 +29,9 @@
 
 #include "CalorimeterHitType.h" //in MarlinUtil
 #include "marlinutil/LCGeometryTypes.h"
+
+#include <AIDA/IHistogramFactory.h>
+#include <AIDA/IHistogram1D.h>
 
 #include "DD4hep/Factories.h"
 #include "DD4hep/DD4hepUnits.h"
@@ -76,7 +80,8 @@ struct StepAndCharge
 			: step(vec) , time(_time)
 		{}
 		LCVector3D step ;
-		double charge = 0 ;
+		float charge = 0 ;
+		float stepLength = 0 ;
 		float time = 0 ;
 } ;
 
@@ -127,7 +132,9 @@ class SimDigital : public Processor
 		//intermediate storage class
 		struct hitMemory
 		{
-				hitMemory() {;}
+				hitMemory()
+					: ahit(nullptr) , relatedHits() , maxEnergydueToHit(-1) , rawHit(-1)
+				{}
 
 				CalorimeterHitImpl* ahit = nullptr ;
 				std::set<int> relatedHits {} ;
@@ -140,9 +147,10 @@ class SimDigital : public Processor
 
 		typedef std::map<dd4hep::long64, hitMemory> cellIDHitMap ;
 
+		void createGenericObjects(LCCollection* col) ;
 
 		void processCollection(LCCollection* inputCol , LCCollectionVec*& outputCol , LCCollectionVec*& outputRelCol , CHT::Layout layout, LCFlagImpl& flag) ;
-		void createPotentialOutputHits(cellIDHitMap& myHitMap , LCCollection* col , SimDigitalGeomCellId* aGeomCellId) ;
+		cellIDHitMap createPotentialOutputHits(LCCollection* col , SimDigitalGeomCellId* aGeomCellId) ;
 
 		void removeAdjacentStep(std::vector<StepAndCharge>& vec) ;
 		void fillTupleStep(std::vector<StepAndCharge>& vec , int level) ;
@@ -150,30 +158,43 @@ class SimDigital : public Processor
 		void applyThresholds(cellIDHitMap& myHitMap) ;
 
 		std::vector<std::string> _inputCollections {} ;
+		std::vector<std::string> _inputGenericCollections {} ;
+
 		std::vector<std::string> _outputCollections {} ;
 		std::vector<std::string> _outputRelCollections {} ;
 
 		std::map<std::string, int> _counters {} ;
 		std::vector<float> _thresholdHcal {} ;
 
+		std::vector<double> _hitCharge = {} ;
+
+		std::map<dd4hep::long64 , std::vector<LCGenericObject*>> geneMap = {} ;
+
 		float _cellSize = 0 ;
+		float _gasGapWidth = 1.2f ;
 
 		//charge spreader
 		std::string chargeSpreaderOption = "Uniform" ;
+		std::string spreaderMapFile = "" ;
 		ChargeSpreaderParameters chargeSpreaderParameters ;
 		ChargeSpreader* chargeSpreader = nullptr ;
 
 		std::string polyaOption = "Uniform" ;
-		double polyaQbar = 0 ;
-		double polyaTheta = 0 ;
+		std::string polyaMapFile = "" ;
+		float polyaQbar = 0.0f ;
+		float polyaTheta = 0.0f ;
 		ChargeInducer* chargeInducer = nullptr ;
 		int _polyaRandomSeed = 1 ;
 
+		double timeCut = std::numeric_limits<double>::max() ;
+		double stepLengthCut = -1.0 ;
+		float _angleCorrPow = 0.4f ;
+
 		bool _doThresholds = true ;
 
-		std::string _effMapFileName = "" ;
-		float _constEffMapValue = 0.97f ;
 		std::string efficiencyOption  = "Uniform" ;
+		std::string effMapFile = "" ;
+		float _constEffMapValue = 0.97f ;
 		EfficiencyManager* efficiency = nullptr ;
 
 		float _absZstepFilter  = 0.0005f ;
@@ -182,6 +203,8 @@ class SimDigital : public Processor
 		AIDA::ITuple* _debugTupleStepFilter = nullptr ;
 		AIDA::ITuple* _tupleStepFilter = nullptr ;
 		AIDA::ITuple* _tupleCollection = nullptr ;
+
+		AIDA::IHistogram1D* _histoCellCharge = nullptr ;
 
 		std::string _encodingType  = "LCGEO" ;
 		std::string _hcalOption = "VIDEAU" ;

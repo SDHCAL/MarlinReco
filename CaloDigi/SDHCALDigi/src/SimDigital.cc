@@ -48,12 +48,6 @@ using namespace lcio ;
 using namespace marlin ;
 using namespace std;
 
-//FIXME to be removed when not more needed
-//#define SDHCAL_MARLINUTIL_BUGFIX 1
-//#define SDHCAL_MOKKA_BUGFIX 1
-
-
-
 
 SimDigital aSimDigital ;
 
@@ -71,6 +65,14 @@ SimDigital::SimDigital()
 							  "Sim Calorimeter Hit Collections" ,
 							  _inputCollections ,
 							  hcalCollections) ;
+
+	std::vector<std::string> genCollections = {} ;
+	registerInputCollections( LCIO::LCGENERICOBJECT,
+							  "inputGenericCollections" ,
+							  "Collections of generic objects containing additional step informations" ,
+							  _inputGenericCollections ,
+							  genCollections) ;
+
 
 	std::vector<std::string> outputHcalCollections = { "HCALBarrelDigi" , "HCALEndcapDigi" , "HCALOtherDigi" } ;
 	registerProcessorParameter( "outputHitCollections",
@@ -107,23 +109,28 @@ SimDigital::SimDigital()
 							   _constEffMapValue,
 							   0.97f) ;
 
-	registerProcessorParameter("EffMapPrototypeFileName",
-							   "File name where prototype efficiency corresction is stored if EffMapOption==PrototypeMap",
-							   _effMapFileName,
-							   std::string("map.txt"));
+	registerProcessorParameter("EffMapFile" ,
+							   "Efficiency map file" ,
+							   effMapFile ,
+							   std::string("")) ;
 
 
 	//charge spreader parameters
+	registerProcessorParameter("SpreaderMapFile",
+							   "Charge spreader map file",
+							   spreaderMapFile ,
+							   std::string("")) ;
+
 	registerProcessorParameter( "functionRange" ,
 								"maximal distance (in mm) at which a step can induce charge using the 2D function defined with functionFormula or when using ChargeSplitterOption==Erf",
 								chargeSpreaderParameters.range ,
-								30.0 ) ;
+								30.0f ) ;
 
 
 	registerProcessorParameter( "RPC_PadSeparation",
 								"distance in mm between two RPC pads : used if ChargeSplitterOption==Function or Erf",
 								chargeSpreaderParameters.padSeparation ,
-								0.0 ) ;
+								0.0f ) ;
 
 	std::vector<float> erfWidth = {2} ;
 	registerProcessorParameter( "erfWidth",
@@ -136,6 +143,12 @@ SimDigital::SimDigital()
 								"Weigth for the different Erf functions",
 								chargeSpreaderParameters.erfWeigth ,
 								erfWeigth ) ;
+
+
+	registerProcessorParameter( "ChargeSplitterd",
+								"d parameter for exact splitter",
+								chargeSpreaderParameters.d,
+								1.0f ) ;
 
 	registerProcessorParameter( "ChargeSplitterOption",
 								"Define the charge splitter method. Possible option : Erf , Exact",
@@ -162,6 +175,15 @@ SimDigital::SimDigital()
 							  true) ;
 
 
+	registerProcessorParameter( "PolyaOption" ,
+								"Uniform polya or different polya per Asic",
+								polyaOption,
+								std::string("Uniform") ) ;
+
+	registerProcessorParameter( "PolyaMapFile" ,
+								"Polya map file",
+								polyaMapFile,
+								std::string("") ) ;
 
 	registerProcessorParameter( "PolyaRandomSeed",
 								"The seed of the polya function",
@@ -171,13 +193,35 @@ SimDigital::SimDigital()
 	registerProcessorParameter( "PolyaAverageCharge" ,
 								"Parameter for the Polya distribution used to simulate the induced charge distribution : mean of the distribution",
 								polyaQbar ,
-								1.6 ) ;
+								1.6f ) ;
 
 	registerProcessorParameter( "PolyaWidthParameter" ,
 								"Parameter for the Polya distribution used to simulate the induced charge distribution : related to the distribution width ",
 								polyaTheta ,
-								16.3 ) ;
+								16.3f ) ;
 
+
+	registerProcessorParameter( "GasGapWidth" ,
+								"Width of the RPC gas gap",
+								_gasGapWidth ,
+								1.2f ) ;
+
+
+	registerProcessorParameter( "AngleCorrectionPower" ,
+								"Parameter for angle correction",
+								_angleCorrPow ,
+								0.4f ) ;
+
+
+	registerProcessorParameter( "TimeCut" ,
+								"Time cut",
+								timeCut ,
+								std::numeric_limits<double>::max() ) ;
+
+	registerProcessorParameter( "StepLengthCut" ,
+								"Step length cut",
+								stepLengthCut ,
+								-1.0 ) ;
 
 
 
@@ -205,9 +249,14 @@ void SimDigital::init()
 	assert ( _outputRelCollections.size() == _inputCollections.size() ) ;
 	assert ( _encodingType == std::string("LCGEO") || _encodingType == std::string("MOKKA") ) ;
 
+	if ( _inputGenericCollections.size() > 0 )
+		assert ( _inputGenericCollections.size() == _inputCollections.size() ) ;
+
 	//init charge inducer
 	if ( polyaOption == std::string("Uniform") )
 		chargeInducer = new UniformPolya(polyaQbar , polyaTheta) ;
+	else if ( polyaOption == std::string("PerAsic") )
+		chargeInducer = new AsicPolya(polyaQbar , polyaTheta , polyaMapFile) ;
 	else
 		throw ParseException( chargeSpreaderOption + std::string(" option for charge inducing is not available ") ) ;
 
@@ -220,6 +269,8 @@ void SimDigital::init()
 		chargeSpreader = new GaussianSpreader ;
 	else if (chargeSpreaderOption == "Exact")
 		chargeSpreader = new ExactSpreader ;
+	else if (chargeSpreaderOption == "ExactPerAsic")
+		chargeSpreader = new ExactSpreaderPerAsic(spreaderMapFile) ;
 	else
 		throw ParseException( chargeSpreaderOption + std::string(" option for charge splitting is not available ") ) ;
 
@@ -230,6 +281,8 @@ void SimDigital::init()
 	//init efficiency manager
 	if (efficiencyOption == "Uniform")
 		efficiency = new UniformEfficiency(_constEffMapValue) ;
+	else if (efficiencyOption == "PerAsic")
+		efficiency = new AsicEfficiency(effMapFile , _constEffMapValue) ;
 	else
 		throw ParseException( efficiencyOption + std::string(" option for efficiency correction is not available") ) ;
 
@@ -258,6 +311,9 @@ void SimDigital::init()
 																	"int NsimHit, NrecoHit, N1, N2, N3");
 	streamlog_out(DEBUG) << "Tuple for collection stat has been initialized to " << _tupleCollection << std::endl;
 	streamlog_out(DEBUG) << "it has " << _tupleCollection->columns() << " columns" <<std::endl;
+
+	_histoCellCharge = AIDAProcessor::histogramFactory( this )->createHistogram1D("CellCharge","CellCharge",1000000,0,2) ;
+
 }
 
 void SimDigital::removeAdjacentStep(std::vector<StepAndCharge>& vec)
@@ -319,39 +375,78 @@ void SimDigital::fillTupleStep(std::vector<StepAndCharge>& vec,int level)
 	}
 }
 
-void SimDigital::createPotentialOutputHits(cellIDHitMap& myHitMap, LCCollection* col, SimDigitalGeomCellId* aGeomCellId)
+void SimDigital::createGenericObjects(LCCollection* col)
 {
 	int numElements = col->getNumberOfElements() ;
+	for (int j = 0 ; j < numElements ; ++j)
+	{
+		LCGenericObject* obj = dynamic_cast<LCGenericObject*>( col->getElementAt(j) ) ;
+		dd4hep::long64 id = obj->getIntVal(0) ; //need to change in future (SDHCALSim only write cellID0 in generic object)
+		geneMap[id].push_back( obj ) ;
+	}
+}
+
+SimDigital::cellIDHitMap SimDigital::createPotentialOutputHits(LCCollection* col, SimDigitalGeomCellId* aGeomCellId)
+{
+	cellIDHitMap myHitMap ;
+
+	int numElements = col->getNumberOfElements() ;
+
 	for (int j = 0 ; j < numElements ; ++j )
 	{
 		SimCalorimeterHit* hit = dynamic_cast<SimCalorimeterHit*>( col->getElementAt( j ) ) ;
-		std::vector<StepAndCharge> steps = aGeomCellId->decode(hit) ;
+
+		std::vector<StepAndCharge> steps ;
+		if ( _inputGenericCollections.empty() )
+			steps = aGeomCellId->decode(hit) ;
+		else
+			steps = aGeomCellId->decode(hit , geneMap) ;
+
+
 		fillTupleStep(steps,0) ;
 
 		float cellSize = aGeomCellId->getCellSize() ;
-
 		chargeSpreader->newHit(cellSize) ;
 
+
+		auto timeGreaterThan = [&](const StepAndCharge& v) -> bool { return std::fabs( v.time ) > timeCut ; } ;
+		std::vector<StepAndCharge>::iterator remPos = std::remove_if(steps.begin() , steps.end() , timeGreaterThan ) ;
+		steps.erase( remPos , steps.end() ) ;
+		fillTupleStep(steps,1) ;
+
+		if ( !_inputGenericCollections.empty() )
+		{
+			auto stepSmallerThan = [&](const StepAndCharge& v) -> bool { return v.stepLength < stepLengthCut ; } ;
+			remPos = std::remove_if( steps.begin() , steps.end() , stepSmallerThan ) ;
+			steps.erase( remPos , steps.end() ) ;
+		}
+		fillTupleStep(steps,2) ;
+
 		auto absZGreaterThan = [&](const StepAndCharge& v) -> bool { return std::abs( v.step.z() ) > _absZstepFilter ; } ;
-		std::vector<StepAndCharge>::iterator remPos = std::remove_if(steps.begin() , steps.end() , absZGreaterThan ) ;
+		remPos = std::remove_if(steps.begin() , steps.end() , absZGreaterThan ) ;
 
 		if (steps.size() > 0 &&_keepAtLeastOneStep && remPos == steps.begin() )
 			remPos++ ;
 		steps.erase( remPos , steps.end() ) ;
-		fillTupleStep(steps,1);
 
 		float eff = efficiency->getEfficiency(aGeomCellId) ;
 		auto randomGreater = [eff](const StepAndCharge&) -> bool { return static_cast<double>(rand())/RAND_MAX > eff ; } ;
 		steps.erase( std::remove_if(steps.begin() , steps.end() , randomGreater ) , steps.end() ) ;
+		fillTupleStep(steps,3) ;
 
-		fillTupleStep(steps,2) ;
 
 		for ( auto& itstep : steps )
 		{
-			itstep.charge = chargeInducer->getCharge(aGeomCellId) ;
+			float angleCorr = 1 ;
+			if ( itstep.stepLength / _gasGapWidth > 1 )
+				angleCorr = std::pow( itstep.stepLength / _gasGapWidth , _angleCorrPow ) ;
+
+			itstep.charge = chargeInducer->getCharge(aGeomCellId)*angleCorr ;
 
 			streamlog_out( DEBUG ) << "step at : " << itstep.step << "\t with a charge of : " << itstep.charge << std::endl ;
 		} //loop on itstep
+
+
 
 		auto sortStepWithCharge = [](const StepAndCharge& s1 , const StepAndCharge& s2) -> bool { return s1.charge > s2.charge ; } ;
 		std::sort(steps.begin(), steps.end(), sortStepWithCharge ) ;
@@ -365,18 +460,18 @@ void SimDigital::createPotentialOutputHits(cellIDHitMap& myHitMap, LCCollection*
 		}
 
 		removeAdjacentStep(steps) ;
-		fillTupleStep(steps,3) ;
+		fillTupleStep(steps,4) ;
 		_tupleStepFilter->addRow() ;
 
 		float time = std::numeric_limits<float>::max() ;
 		for ( const auto& step : steps )
 			time = std::min(time , step.time) ;
 
-
 		for ( const StepAndCharge& itstep : steps )
-			chargeSpreader->addCharge( itstep.charge , itstep.step.x() , itstep.step.y() , aGeomCellId ) ;
+			chargeSpreader->addCharge( itstep.charge , static_cast<float>(itstep.step.x()) , static_cast<float>(itstep.step.y()) , aGeomCellId ) ;
 
-		for ( const std::pair<ChargeSpreader::I_J_Coordinates,double>& it : chargeSpreader->getChargeMap() )
+
+		for ( const std::pair<ChargeSpreader::I_J_Coordinates,float>& it : chargeSpreader->getChargeMap() )
 		{
 			if (it.second >= 0)
 			{
@@ -406,7 +501,8 @@ void SimDigital::createPotentialOutputHits(cellIDHitMap& myHitMap, LCCollection*
 					calhitMem.rawHit = j ; //for (int j(0); j < numElements; ++j)
 					calhitMem.maxEnergydueToHit = static_cast<float>( it.second ) ;
 				}
-				calhitMem.ahit->setEnergy( static_cast<float>( calhitMem.ahit->getEnergy() + it.second) ) ;
+
+				calhitMem.ahit->setEnergy( calhitMem.ahit->getEnergy() + static_cast<float>( it.second ) ) ;
 				calhitMem.relatedHits.insert(j) ; //for (int j(0); j < numElements; ++j)
 			}
 			else
@@ -416,6 +512,11 @@ void SimDigital::createPotentialOutputHits(cellIDHitMap& myHitMap, LCCollection*
 		} //loop on added hits for this hit
 
 	} // end of for (int j(0); j < numElements; ++j)  //loop on elements in collection
+
+	for( const auto& it : myHitMap )
+		_hitCharge.push_back( it.second.ahit->getEnergy() ) ;
+
+	return myHitMap ;
 }
 
 
@@ -466,7 +567,6 @@ void SimDigital::processCollection(LCCollection* inputCol , LCCollectionVec*& ou
 	outputRelCol = new LCCollectionVec(LCIO::LCRELATION) ;
 
 	outputCol->setFlag(flag.getFlag()) ;
-	cellIDHitMap myHitMap ;
 
 	SimDigitalGeomCellId* geomCellId = nullptr ;
 	if ( _encodingType == std::string("LCGEO") )
@@ -477,10 +577,15 @@ void SimDigital::processCollection(LCCollection* inputCol , LCCollectionVec*& ou
 	else if ( _encodingType == std::string("MOKKA") )
 	{
 		geomCellId = new SimDigitalGeomCellIdMOKKA(inputCol,outputCol) ;
+		if ( _hcalOption == std::string("VIDEAU") )
+			dynamic_cast<SimDigitalGeomCellIdMOKKA*>(geomCellId)->setGeom(SimDigitalGeomCellIdMOKKA::VIDEAU) ;
+
+		streamlog_out(DEBUG) << "geom : " << dynamic_cast<SimDigitalGeomCellIdMOKKA*>(geomCellId)->getGeom() << std::endl;
 	}
 
 	geomCellId->setLayerLayout(layout) ;
-	createPotentialOutputHits(myHitMap , inputCol , geomCellId) ;
+	cellIDHitMap myHitMap = createPotentialOutputHits(inputCol , geomCellId) ;
+
 	removeHitsBelowThreshold(myHitMap , _thresholdHcal.at(0) ) ;
 
 	if (_doThresholds)
@@ -526,6 +631,10 @@ void SimDigital::processEvent( LCEvent* evt )
 	_counters["N2"]=0;
 	_counters["N3"]=0;
 
+	geneMap.clear() ;
+	_hitCharge.clear() ;
+
+
 
 	/////////////////for ECAL---------------------------------------------------
 	// copy the flags from the input collection
@@ -551,6 +660,13 @@ void SimDigital::processEvent( LCEvent* evt )
 			LCCollectionVec* outputCol = nullptr ;
 			LCCollectionVec* outputRelCol = nullptr ;
 
+			LCCollection* genCol = nullptr ;
+			if ( !_inputGenericCollections.empty() )
+			{
+				genCol = evt->getCollection( _inputGenericCollections.at(i) ) ;
+				createGenericObjects( genCol ) ;
+			}
+
 			processCollection(inputCol , outputCol , outputRelCol , layout , flag) ;
 
 			_counters["NReco"] += outputCol->getNumberOfElements() ;
@@ -569,6 +685,10 @@ void SimDigital::processEvent( LCEvent* evt )
 	_tupleCollection->fill(3,_counters["N2"]);
 	_tupleCollection->fill(4,_counters["N3"]);
 	_tupleCollection->addRow();
+
+	for( const auto& it : _hitCharge)
+		_histoCellCharge->fill(it) ;
+
 
 	streamlog_out(MESSAGE) << "have processed " << _counters["|ALL"] << " events" << std::endl;
 }

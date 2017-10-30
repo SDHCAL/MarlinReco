@@ -19,18 +19,18 @@ ChargeSpreader::ChargeSpreader()
 ChargeSpreader::~ChargeSpreader()
 {}
 
-void ChargeSpreader::addCharge(double charge, double posI, double posJ , SimDigitalGeomCellId* )
+void ChargeSpreader::addCharge(float charge, float posI, float posJ , SimDigitalGeomCellId* )
 {
 	if ( parameters.padSeparation > parameters.cellSize )
 		return ;
 
 	int icell = static_cast<int>( parameters.range/parameters.cellSize ) ;
 
-	double chargeTotCheck = 0 ;
+	float chargeTotCheck = 0 ;
 	for (int I = -icell ; I <= icell ; I++)
 	{
-		double minI = (I-0.5)*parameters.cellSize - posI + parameters.padSeparation/2 ;
-		double maxI = (I+0.5)*parameters.cellSize - posI - parameters.padSeparation/2 ;
+		float minI = (I-0.5f)*parameters.cellSize - posI + 0.5f*parameters.padSeparation ;
+		float maxI = (I+0.5f)*parameters.cellSize - posI - 0.5f*parameters.padSeparation ;
 
 		if ( minI < -parameters.range )
 			minI = -parameters.range ;
@@ -39,15 +39,15 @@ void ChargeSpreader::addCharge(double charge, double posI, double posJ , SimDigi
 
 		for (int J = -icell ; J <= icell ; J++)
 		{
-			double minJ = (J-0.5)*parameters.cellSize - posJ + parameters.padSeparation/2 ;
-			double maxJ = (J+0.5)*parameters.cellSize - posJ - parameters.padSeparation/2 ;
+			float minJ = (J-0.5f)*parameters.cellSize - posJ + 0.5f*parameters.padSeparation ;
+			float maxJ = (J+0.5f)*parameters.cellSize - posJ - 0.5f*parameters.padSeparation ;
 
 			if ( minJ < -parameters.range )
 				minJ = -parameters.range ;
 			if ( maxJ > parameters.range )
 				maxJ = parameters.range ;
 
-			double integralResult = computeIntegral(minI , maxI , minJ , maxJ) ;
+			float integralResult = computeIntegral(minI , maxI , minJ , maxJ) ;
 
 			chargeMap[I_J_Coordinates(I,J)] += charge * integralResult/normalisation ;
 
@@ -88,9 +88,9 @@ void GaussianSpreader::init()
 	streamlog_out( DEBUG ) << "range : " << parameters.range << " ; padseparation : " << parameters.padSeparation << std::endl;
 }
 
-double GaussianSpreader::computeIntegral(double x1 , double x2 , double y1 , double y2) const
+float GaussianSpreader::computeIntegral(float x1 , float x2 , float y1 , float y2) const
 {
-	double integralResult = 0 ;
+	float integralResult = 0 ;
 
 	for( unsigned int n = 0 ; n < parameters.erfWidth.size() ; n++ )
 	{
@@ -119,12 +119,12 @@ void ExactSpreader::init()
 	streamlog_out( DEBUG ) << "range : " << parameters.range << " ; padseparation : " << parameters.padSeparation << std::endl ;
 }
 
-double ExactSpreader::computeIntegral(double x1 , double x2 , double y1 , double y2) const
+float ExactSpreader::computeIntegral(float x1 , float x2 , float y1 , float y2) const
 {
-	double term1 = std::atan( y2*x2 / ( parameters.d*std::sqrt( parameters.d*parameters.d + y2*y2 + x2*x2) ) ) ;
-	double term2 = std::atan( y1*x2 / ( parameters.d*std::sqrt( parameters.d*parameters.d + y1*y1 + x2*x2) ) ) ;
-	double term3 = std::atan( y2*x1 / ( parameters.d*std::sqrt( parameters.d*parameters.d + y2*y2 + x1*x1) ) ) ;
-	double term4 = std::atan( y1*x1 / ( parameters.d*std::sqrt( parameters.d*parameters.d + y1*y1 + x1*x1) ) ) ;
+	float term1 = std::atan( y2*x2 / ( parameters.d*std::sqrt( parameters.d*parameters.d + y2*y2 + x2*x2) ) ) ;
+	float term2 = std::atan( y1*x2 / ( parameters.d*std::sqrt( parameters.d*parameters.d + y1*y1 + x2*x2) ) ) ;
+	float term3 = std::atan( y2*x1 / ( parameters.d*std::sqrt( parameters.d*parameters.d + y2*y2 + x1*x1) ) ) ;
+	float term4 = std::atan( y1*x1 / ( parameters.d*std::sqrt( parameters.d*parameters.d + y1*y1 + x1*x1) ) ) ;
 
 	return (term1 - term2 - term3 + term4) ;
 }
@@ -180,13 +180,13 @@ void ExactSpreaderPerAsic::readFile(std::string fileName)
 	file->Close() ;
 }
 
-void ExactSpreaderPerAsic::addCharge(double charge, double posI, double posJ, SimDigitalGeomCellId* cellID)
+void ExactSpreaderPerAsic::addCharge(float charge, float posI, float posJ, SimDigitalGeomCellId* cellID)
 {
 	//	int asicKey = (cellID.I()-1)/8 + ((cellID.J()-1)/8)*12 + cellID.K()*1000 ;
 
 	AsicKey asicKey(cellID->K() , (cellID->I()-1)/8 , (cellID->J()-1)/8) ;
 
-	std::map<AsicKey, double >::iterator it = dMap.find( asicKey ) ;
+	std::map<AsicKey, float >::iterator it = dMap.find( asicKey ) ;
 
 	if ( it == dMap.end() )
 	{

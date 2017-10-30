@@ -66,7 +66,7 @@ void ChargeSpreader::addCharge(float charge, float posI, float posJ , SimDigital
 GaussianSpreader::GaussianSpreader()
 	: ChargeSpreader()
 {
-	normalisation = 1 ;
+	normalisation = 1.0f ;
 }
 
 GaussianSpreader::~GaussianSpreader()
@@ -74,8 +74,7 @@ GaussianSpreader::~GaussianSpreader()
 
 void GaussianSpreader::init()
 {
-	if ( parameters.erfWidth.size() != parameters.erfWeigth.size() )
-		throw ParseException( " Different size for erfWidth erfWeigth " ) ;
+	assert ( parameters.erfWidth.size() == parameters.erfWeigth.size() ) ;
 
 	normalisation = 0 ;
 	for ( unsigned int i = 0 ; i < parameters.erfWidth.size() ; i++ )
@@ -90,7 +89,7 @@ void GaussianSpreader::init()
 
 float GaussianSpreader::computeIntegral(float x1 , float x2 , float y1 , float y2) const
 {
-	float integralResult = 0 ;
+	float integralResult = 0.0f ;
 
 	for( unsigned int n = 0 ; n < parameters.erfWidth.size() ; n++ )
 	{
@@ -182,8 +181,6 @@ void ExactSpreaderPerAsic::readFile(std::string fileName)
 
 void ExactSpreaderPerAsic::addCharge(float charge, float posI, float posJ, SimDigitalGeomCellId* cellID)
 {
-	//	int asicKey = (cellID.I()-1)/8 + ((cellID.J()-1)/8)*12 + cellID.K()*1000 ;
-
 	AsicKey asicKey(cellID->K() , (cellID->I()-1)/8 , (cellID->J()-1)/8) ;
 
 	std::map<AsicKey, float >::iterator it = dMap.find( asicKey ) ;

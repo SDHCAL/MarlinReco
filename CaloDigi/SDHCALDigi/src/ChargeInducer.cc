@@ -26,21 +26,21 @@ void ChargeInducer::setSeed(unsigned int value)
 }
 
 
-UniformPolya::UniformPolya(double _qbar , double _theta)
+UniformPolya::UniformPolya(float _qbar , float _theta)
 	: ChargeInducer() ,
-	  gammadist( boost::gamma_distribution<double>( _qbar/_theta , _theta ) )
+	  gammadist( boost::gamma_distribution<float>( _qbar/_theta , _theta ) )
 {
 }
 
 UniformPolya::~UniformPolya()
 {}
 
-double UniformPolya::getCharge(SimDigitalGeomCellId*)
+float UniformPolya::getCharge(SimDigitalGeomCellId*)
 {
 	return gammadist(generator) ;
 }
 
-AsicPolya::AsicPolya(double _qbar , double _theta , std::string fileName)
+AsicPolya::AsicPolya(float _qbar , float _theta , std::string fileName)
 	: UniformPolya(_qbar , _theta) ,
 	  polyaMap()
 {
@@ -54,7 +54,6 @@ AsicPolya::~AsicPolya()
 
 void AsicPolya::readFile(std::string fileName)
 {
-	//	TFile* file = new TFile(fileName.c_str() , "READ") ;
 	TFile* file = TFile::Open( fileName.c_str() , "READ") ;
 	if ( !file )
 	{
@@ -87,10 +86,10 @@ void AsicPolya::readFile(std::string fileName)
 		if ( qbarAsic <= 0 || deltaAsic <= 0 )
 			continue ;
 
-		double alpha = qbarAsic/deltaAsic ;
-		double delta = deltaAsic ;
+		float alpha = qbarAsic/deltaAsic ;
+		float delta = deltaAsic ;
 
-		boost::gamma_distribution<double> localDist( alpha , delta ) ;
+		boost::gamma_distribution<float> localDist( alpha , delta ) ;
 
 		int iAsic = static_cast<int>( (position->at(0)-10.408)/(8*10.408) ) ;
 		int jAsic = static_cast<int>( (position->at(1)-10.408)/(8*10.408) ) ;
@@ -105,12 +104,12 @@ void AsicPolya::readFile(std::string fileName)
 	file->Close() ;
 }
 
-double AsicPolya::getCharge(SimDigitalGeomCellId* cellID)
+float AsicPolya::getCharge(SimDigitalGeomCellId* cellID)
 {
 	//	int asicKey = (cellID.I()-1)/8 + ((cellID.J()-1)/8)*12 + cellID.K()*1000 ;
 	AsicKey asicKey(cellID->K() , (cellID->I()-1)/8 , (cellID->J()-1)/8) ;
 
-	std::map<AsicKey, boost::gamma_distribution<double> >::iterator it = polyaMap.find( asicKey ) ;
+	std::map<AsicKey, boost::gamma_distribution<float> >::iterator it = polyaMap.find( asicKey ) ;
 
 	if ( it == polyaMap.end() )
 	{

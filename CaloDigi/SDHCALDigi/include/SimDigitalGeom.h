@@ -8,6 +8,7 @@
 #include <UTIL/CellIDDecoder.h>
 
 #include <EVENT/SimCalorimeterHit.h>
+#include <EVENT/LCGenericObject.h>
 #include <IMPL/CalorimeterHitImpl.h>
 
 #include "CalorimeterHitType.h" //in MarlinUtil
@@ -43,9 +44,13 @@ class SimDigitalGeomCellId
 		virtual float getCellSize() = 0 ;
 		virtual void setLayerLayout(CHT::Layout layout) = 0 ;
 
-		virtual std::vector<StepAndCharge> decode(SimCalorimeterHit* hit) = 0 ;
+		std::vector<StepAndCharge> decode(SimCalorimeterHit* hit) ;
+		std::vector<StepAndCharge> decode(SimCalorimeterHit* hit , const std::map<dd4hep::long64, std::vector<LCGenericObject*> >& map) ;
+
 	protected :
+		virtual void processGeometry(SimCalorimeterHit* hit) = 0 ;
 		void createStepAndChargeVec(SimCalorimeterHit* hit , std::vector<StepAndCharge>& vec) ;
+		void createStepAndChargeVec(SimCalorimeterHit* hit , const std::vector<LCGenericObject*>& genericVec , std::vector<StepAndCharge>& vec) ;
 
 	public :
 		virtual void encode(CalorimeterHitImpl *hit , int delta_I , int delta_J) = 0 ;
@@ -122,13 +127,13 @@ class SimDigitalGeomCellIdLCGEO : public SimDigitalGeomCellId
 		virtual float getCellSize() ;
 		virtual void setLayerLayout(CHT::Layout layout) ;
 
-		virtual std::vector<StepAndCharge> decode(SimCalorimeterHit *hit) ;
 		virtual void encode(CalorimeterHitImpl *hit , int delta_I , int delta_J) ;
 
 		SimDigitalGeomCellIdLCGEO(const SimDigitalGeomCellIdLCGEO &toCopy) = delete ;
 		void operator=(const SimDigitalGeomCellIdLCGEO &toCopy) = delete ;
 
 	protected :
+		virtual void processGeometry(SimCalorimeterHit* hit) ;
 
 		std::vector<std::string> _encodingString = { "layer", "stave", "module", "tower", "x", "y" } ;
 
@@ -151,17 +156,23 @@ class SimDigitalGeomCellIdMOKKA : public SimDigitalGeomCellId
 		virtual float getCellSize() ;
 		virtual void setLayerLayout(CHT::Layout layout) ;
 
-		virtual std::vector<StepAndCharge> decode(SimCalorimeterHit *hit) ;
+		enum HCAL_GEOM {VIDEAU,TESLA} ;
+		void setGeom(HCAL_GEOM geom) { _geom = geom ; }
+
+		HCAL_GEOM getGeom() const { return _geom ; }
+
+
 		virtual void encode(CalorimeterHitImpl *hit , int delta_I , int delta_J) ;
 
 		SimDigitalGeomCellIdMOKKA(const SimDigitalGeomCellIdMOKKA &toCopy) = delete ;
 		void operator=(const SimDigitalGeomCellIdMOKKA &toCopy) = delete ;
 
 	protected :
+		virtual void processGeometry(SimCalorimeterHit* hit) ;
 
 		std::vector<std::string> _encodingString = { "K-1", "S-1", "M", "", "I", "J" } ;
 
-		enum HCAL_GEOM {VIDEAU,TESLA} ;
+
 		HCAL_GEOM _geom = TESLA ;
 
 		SimDigitalGeomRPCFrame* _normal_I_J_setter = nullptr ;

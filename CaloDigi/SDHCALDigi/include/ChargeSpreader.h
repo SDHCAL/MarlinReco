@@ -13,16 +13,16 @@ class SimDigitalGeomCellId ;
 
 struct ChargeSpreaderParameters
 {
-		double cellSize = 10 ;
-		double range = 30 ;
-		double padSeparation = 0 ;
+		float cellSize = 10.f ;
+		float range = 30.f ;
+		float padSeparation = 0.f ;
 
 		//erf
 		std::vector<float> erfWidth = {2} ;
 		std::vector<float> erfWeigth = {1} ;
 
 		//exact
-		double d = 1 ;
+		float d = 1.f ;
 } ;
 
 
@@ -37,18 +37,18 @@ class ChargeSpreader
 		virtual void init() = 0 ;
 
 		typedef std::pair<int,int> I_J_Coordinates ;
-		virtual void addCharge( double charge , double posI , double posJ , SimDigitalGeomCellId* ) ;
+		virtual void addCharge( float charge , float posI , float posJ , SimDigitalGeomCellId* ) ;
 		void newHit(float cellSize_) { chargeMap.clear() ; parameters.cellSize = cellSize_ ; }
 
-		const std::map<I_J_Coordinates,double>& getChargeMap() const { return chargeMap ; }
+		const std::map<I_J_Coordinates,float>& getChargeMap() const { return chargeMap ; }
 
 	protected :
-		virtual double computeIntegral(double x1 , double x2 , double y1 , double y2) const = 0 ;
+		virtual float computeIntegral(float x1 , float x2 , float y1 , float y2) const = 0 ;
 
-		std::map<I_J_Coordinates,double> chargeMap ;
+		std::map<I_J_Coordinates,float> chargeMap ;
 		ChargeSpreaderParameters parameters ;
 
-		float normalisation = 0 ;
+		float normalisation = 0.f ;
 } ;
 
 
@@ -60,10 +60,10 @@ class GaussianSpreader : public ChargeSpreader
 		virtual void init() ;
 
 	protected :
-		virtual double computeIntegral(double x1 , double x2 , double y1 , double y2) const ;
+		virtual float computeIntegral(float x1 , float x2 , float y1 , float y2) const ;
 
-	private :
-		friend class SimDigital ;
+	//private :
+		//friend class SimDigital ;
 } ;
 
 class ExactSpreader : public ChargeSpreader
@@ -74,10 +74,10 @@ class ExactSpreader : public ChargeSpreader
 		virtual void init() ;
 
 	protected :
-		double computeIntegral(double x1 , double x2 , double y1 , double y2) const ;
+		float computeIntegral(float x1 , float x2 , float y1 , float y2) const ;
 
-	private :
-		friend class SimDigital ;
+	//private :
+		//friend class SimDigital ;
 } ;
 
 class ExactSpreaderPerAsic : public ExactSpreader
@@ -88,15 +88,15 @@ class ExactSpreaderPerAsic : public ExactSpreader
 
 		virtual void setParameters(ChargeSpreaderParameters param) { parameters = param ; dGlobal = parameters.d ; }
 
-		virtual void addCharge(double charge, double posI, double posJ , SimDigitalGeomCellId* cellID) ;
+		virtual void addCharge(float charge, float posI, float posJ , SimDigitalGeomCellId* cellID) ;
 
 	protected :
 
-		double dGlobal = 1 ;
+		float dGlobal = 1.0f ;
 		void readFile(std::string fileName) ;
 
 
-		std::map<AsicKey,double> dMap ;
+		std::map<AsicKey,float> dMap ;
 
 } ;
 

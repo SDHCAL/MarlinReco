@@ -250,7 +250,7 @@ void SimDigital::init()
 	// check that number of input and output collections names are the same
 	assert ( _outputCollections.size() == _inputCollections.size() ) ;
 	assert ( _outputRelCollections.size() == _inputCollections.size() ) ;
-	assert ( _encodingType == std::string("LCGEO") || _encodingType == std::string("MOKKA") ) ;
+	assert ( _encodingType == std::string("LCGEO") || _encodingType == std::string("MOKKA") || _encodingType == std::string("PROTO") ) ;
 
 	if ( _inputGenericCollections.size() > 0 )
 		assert ( _inputGenericCollections.size() == _inputCollections.size() ) ;
@@ -478,21 +478,19 @@ SimDigital::cellIDHitMap SimDigital::createPotentialOutputHits(LCCollection* col
 		{
 			if (it.second >= 0)
 			{
-				CalorimeterHitImpl* tmp = new CalorimeterHitImpl() ;
-				aGeomCellId->encode(tmp , it.first.first , it.first.second) ;
+				std::unique_ptr<CalorimeterHitImpl> tmp = aGeomCellId->encode(it.first.first , it.first.second) ;
+
+				if (tmp == nullptr)
+					continue ;
 
 				dd4hep::long64 index = tmp->getCellID1() ;
 				index = index << 32 ;
 				index += tmp->getCellID0() ;
 
-				if ( myHitMap.find(index) != myHitMap.end() )
-				{
-					delete tmp ;
-				}
-				else //create hit
+				if  ( myHitMap.find(index) == myHitMap.end() ) //create hit
 				{
 					hitMemory& toto = myHitMap[index] ;
-					toto.ahit.reset(tmp) ;
+					toto.ahit = std::move(tmp) ;
 					toto.ahit->setEnergy(0) ;
 					toto.ahit->setTime(time) ;
 				}
@@ -572,6 +570,11 @@ void SimDigital::processCollection(LCCollection* inputCol , LCCollectionVec*& ou
 	{
 		geomCellId = new SimDigitalGeomCellIdLCGEO(inputCol,outputCol) ;
 		dynamic_cast<SimDigitalGeomCellIdLCGEO*>(geomCellId)->setCellSize(_cellSize) ;
+	}
+	if ( _encodingType == std::string("PROTO") )
+	{
+		geomCellId = new SimDigitalGeomCellIdPROTO(inputCol,outputCol) ;
+		dynamic_cast<SimDigitalGeomCellIdPROTO*>(geomCellId)->setCellSize(_cellSize) ;
 	}
 	else if ( _encodingType == std::string("MOKKA") )
 	{

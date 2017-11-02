@@ -62,28 +62,6 @@ SimDigitalGeomCellIdPROTO::SimDigitalGeomCellIdPROTO(LCCollection* inputCol, LCC
 	_currentHCALCollectionCaloLayout = CHT::endcap ;
 }
 
-SimDigitalGeomCellIdMOKKA::SimDigitalGeomCellIdMOKKA(LCCollection* inputCol, LCCollectionVec* outputCol)
-	: SimDigitalGeomCellId(inputCol , outputCol)
-{
-	std::string gearFile = Global::parameters->getStringVal("GearXMLFile") ;
-
-	_geom = VIDEAU ;
-
-	// maybe we can also set the geometry by the hcal option parameter
-	try
-	{
-		Global::GEAR->getHcalBarrelParameters().getIntVal("Hcal_outer_polygon_order") ; //it is VIDEAU geometry if it is OK
-	}
-	catch (gear::Exception &)
-	{
-		_geom = TESLA ;
-	}
-
-	streamlog_out( DEBUG ) << "we will use gear!" << std::endl ;
-	streamlog_out( DEBUG ) << "gear: " << Global::GEAR << std::endl ;
-	//	streamlog_out( DEBUG )<< "!!!!!!(Videau=0, TESLA=1) Geometry is _geom= : "<<_geom << std::endl;
-}
-
 SimDigitalGeomCellId::~SimDigitalGeomCellId()
 {
 }
@@ -94,111 +72,6 @@ SimDigitalGeomCellIdLCGEO::~SimDigitalGeomCellIdLCGEO()
 
 SimDigitalGeomCellIdPROTO::~SimDigitalGeomCellIdPROTO()
 {
-}
-
-SimDigitalGeomCellIdMOKKA::~SimDigitalGeomCellIdMOKKA()
-{
-	if (_normal_I_J_setter != nullptr)
-		delete _normal_I_J_setter;
-}
-
-
-SimDigitalGeomRPCFrame::~SimDigitalGeomRPCFrame()
-{
-}
-
-void SimDigitalGeomRPCFrame_TESLA_BARREL::setRPCFrame()
-{
-	normal().set(1,0,0);
-	Iaxis().set(0,1,0);
-	Jaxis().set(0,0,1);
-	double angle=(stave()/2)*(-45)*CLHEP::degree;
-	normal().rotateZ(angle);
-	Iaxis().rotateZ(angle);
-}
-
-void SimDigitalGeomRPCFrame_VIDEAU_BARREL::setRPCFrame()
-{
-	normal().set(-1,0,0);
-	Iaxis().set(0,1,0);
-	Jaxis().set(0,0,1);
-	double angle=(stave()-1)*(45)*CLHEP::degree;
-	normal().rotateZ(angle);
-	Iaxis().rotateZ(angle);
-}
-
-void SimDigitalGeomRPCFrame_TESLA_ENDCAP::setRPCFrame()
-{
-	if (module()==6)
-	{
-		normal().set(0,0,1);
-		Iaxis().set(1,0,0);
-		Jaxis().set(0,1,0);
-		Iaxis().rotateZ(stave()*(-90)*CLHEP::degree);
-		Jaxis().rotateZ(stave()*(-90)*CLHEP::degree);
-	}
-	else if (module()==4)
-	{
-		normal().set(0,0,-1);
-		Iaxis().set(-1,0,0);
-		Jaxis().set(0,1,0);
-		Iaxis().rotateZ(stave()*90*CLHEP::degree);
-		Jaxis().rotateZ(stave()*90*CLHEP::degree);
-	}
-	else
-	{
-		streamlog_out(ERROR) << "ERROR ; TESLA detector : unknown module for endcap " << module() << std::endl;
-	}
-}
-
-//valid also for all endcap rings (VIDEAU and TESLA)
-void SimDigitalGeomRPCFrame_VIDEAU_ENDCAP::setRPCFrame()
-{
-	//	same as before
-	if (module()==6)
-	{
-		//streamlog_out( DEBUG )<< "!!!!!!!!!! VIDEAU_ENDCAP : module=6 "<< std::endl;
-		normal().set(0,0,1);
-		Iaxis().set(1,0,0);
-		Jaxis().set(0,1,0);
-		Iaxis().rotateZ(stave()*(90)*CLHEP::degree);
-		Jaxis().rotateZ(stave()*(90)*CLHEP::degree);
-	}
-	else if (module()==0)
-	{
-		//streamlog_out( DEBUG )<< "!!!!!!!!!! VIDEAU_ENDCAP : module 0"<< std::endl;
-		normal().set(0,0,-1);
-		Iaxis().set(-1,0,0);
-		Jaxis().set(0,1,0);
-		Iaxis().rotateZ(stave()*(-90)*CLHEP::degree);
-		Jaxis().rotateZ(stave()*(-90)*CLHEP::degree);
-	}
-	else
-	{
-		streamlog_out(ERROR) << "ERROR : unknown module for endcap or endcapring " << module() << std::endl;
-	}
-
-	//	//cheat
-	//	if (module()==6)
-	//	{
-	//		normal().set(0,0,1);
-	//		Iaxis().set(0,1,0);
-	//		Jaxis().set(1,0,0);
-	//		Iaxis().rotateZ(stave()*(-90)*CLHEP::degree);
-	//		Jaxis().rotateZ(stave()*(-90)*CLHEP::degree);
-	//	}
-	//	else if (module()==0)
-	//	{
-	//		normal().set(0,0,-1);
-	//		Iaxis().set(0,1,0);
-	//		Jaxis().set(-1,0,0);
-	//		Iaxis().rotateZ(stave()*90*CLHEP::degree);
-	//		Jaxis().rotateZ(stave()*90*CLHEP::degree);
-	//	}
-	//	else
-	//	{
-	//		streamlog_out(ERROR) << "ERROR : unknown module for endcap or endcapring " << module() << std::endl;
-	//	}
 }
 
 void SimDigitalGeomCellId::createStepAndChargeVec(SimCalorimeterHit* hit , std::vector<StepAndCharge>& vec)
@@ -398,49 +271,6 @@ void SimDigitalGeomCellIdPROTO::processGeometry(SimCalorimeterHit* hit)
 	_hitPosition = hit->getPosition() ;
 }
 
-void SimDigitalGeomCellIdMOKKA::processGeometry(SimCalorimeterHit* hit)
-{
-	_cellIDvalue = _decoder( hit ).getValue() ;
-
-	_trueLayer = _decoder( hit )[_encodingString.at(0)] ;    // - 1;
-	_stave     = _decoder( hit )[_encodingString.at(1)] ;     // +1
-	_module    = _decoder( hit )[_encodingString.at(2)] ;
-
-	if( _encodingString.at(3).size() != 0)
-		_tower     = _decoder( hit )[_encodingString.at(3)] ;
-
-	_Iy        = _decoder( hit )[_encodingString.at(4)] ;
-	try
-	{
-		_Jz = _decoder( hit )[_encodingString.at(5)] ;
-	}
-	catch (lcio::Exception &)
-	{
-		_encodingString.at(5) = "z" ;
-
-		try
-		{
-			_Jz = _decoder( hit )[_encodingString.at(5)] ;
-		}
-		catch(lcio::Exception &)
-		{
-			_encodingString.at(5) = "y" ;
-			_Jz = _decoder( hit )[_encodingString.at(5)] ;
-		}
-	}
-
-	// _slice     = _decoder( hit )["slice"];
-	_hitPosition = hit->getPosition();
-	if(abs(_Iy)<1 && abs(_Iy)!=0.0)
-		streamlog_out(DEBUG) << "_Iy, _Jz:"<<_Iy <<" "<<_Jz<< std::endl;
-	//if(_module==0||_module==6) streamlog_out( DEBUG )<<"tower "<<_tower<<" layer "<<_trueLayer<<" stave "<<_stave<<" module "<<_module<<std::endl;
-	//<<" Iy " << _Iy <<"  Jz "<<_Jz<<" hitPosition "<<_hitPosition<<std::endl
-	//<<" _hitPosition[0] "<<_hitPosition[0]<<" _hitPosition[1] "<<_hitPosition[1]<<" _hitPosition[2] "<<_hitPosition[2]<<std::endl;
-
-	_normal_I_J_setter->setRPCFrame() ;
-}
-
-
 std::vector<StepAndCharge> SimDigitalGeomCellId::decode(SimCalorimeterHit* hit)
 {
 	this->processGeometry(hit) ;
@@ -608,35 +438,6 @@ std::unique_ptr<CalorimeterHitImpl> SimDigitalGeomCellIdPROTO::encode(int delta_
 	return hit ;
 }
 
-std::unique_ptr<CalorimeterHitImpl> SimDigitalGeomCellIdMOKKA::encode(int delta_I, int delta_J)
-{
-	_encoder.setValue(_cellIDvalue) ;
-
-	int RealIy = _Iy + delta_I ;
-	int RealJz = _Jz + delta_J ;
-
-	if (RealIy<0 || abs(RealIy)>330 || RealJz<0 || abs(RealJz)>330)
-		return std::unique_ptr<CalorimeterHitImpl>(nullptr) ;
-
-	_encoder[_encodingString.at(4)] = RealIy ;
-	_encoder[_encodingString.at(5)] = RealJz ;
-
-	std::unique_ptr<CalorimeterHitImpl> hit( new CalorimeterHitImpl ) ;
-
-	_encoder.setCellID( hit.get() ) ;
-
-	hit->setType( CHT( CHT::had, CHT::hcal , _currentHCALCollectionCaloLayout,  _trueLayer ) ) ;
-
-	float posB[3] ;
-	posB[0] = static_cast<float>( _hitPosition[0] + getCellSize()*( delta_I*_Iaxis.x() + delta_J*_Jaxis.x() ) ) ;
-	posB[1] = static_cast<float>( _hitPosition[1] + getCellSize()*( delta_I*_Iaxis.y() + delta_J*_Jaxis.y() ) ) ;
-	posB[2] = static_cast<float>( _hitPosition[2] + getCellSize()*( delta_I*_Iaxis.z() + delta_J*_Jaxis.z() ) ) ;
-	hit->setPosition(posB) ;
-
-	return hit ;
-}
-
-
 void SimDigitalGeomCellIdLCGEO::setLayerLayout(CHT::Layout layout)
 {
 	_currentHCALCollectionCaloLayout = layout ;
@@ -681,42 +482,6 @@ void SimDigitalGeomCellIdPROTO::setLayerLayout(CHT::Layout layout)
 	_currentHCALCollectionCaloLayout = layout ;
 }
 
-void SimDigitalGeomCellIdMOKKA::setLayerLayout(CHT::Layout layout)
-{
-	if(_normal_I_J_setter != nullptr)
-		delete _normal_I_J_setter ;
-
-	_currentHCALCollectionCaloLayout=layout;
-
-
-	if (_currentHCALCollectionCaloLayout == CHT::endcap)
-	{
-		_layerLayout = & Global::GEAR->getHcalEndcapParameters().getLayerLayout();
-
-		if (_geom == TESLA)
-			_normal_I_J_setter= new SimDigitalGeomRPCFrame_TESLA_ENDCAP(*this);
-		else
-			_normal_I_J_setter= new SimDigitalGeomRPCFrame_VIDEAU_ENDCAP(*this);
-	}
-	else if (_currentHCALCollectionCaloLayout == CHT::ring)
-	{
-		_layerLayout = & Global::GEAR->getHcalRingParameters().getLayerLayout();
-
-		// no TESLA ring ?
-		_normal_I_J_setter= new SimDigitalGeomRPCFrame_VIDEAU_ENDCAP(*this);
-	}
-	else
-	{
-		_layerLayout = & Global::GEAR->getHcalBarrelParameters().getLayerLayout();
-
-		if (_geom == TESLA)
-			_normal_I_J_setter= new SimDigitalGeomRPCFrame_TESLA_BARREL(*this);
-		else
-			_normal_I_J_setter= new SimDigitalGeomRPCFrame_VIDEAU_BARREL(*this);
-	}
-}
-
-
 float SimDigitalGeomCellIdLCGEO::getCellSize()
 {
 	float cellSize = 0.f ;
@@ -736,18 +501,6 @@ float SimDigitalGeomCellIdLCGEO::getCellSize()
 	}
 
 	//streamlog_out( MESSAGE ) << "cellSize: " << cellSize << endl;
-
-	return cellSize ;
-}
-
-float SimDigitalGeomCellIdMOKKA::getCellSize()
-{
-	float cellSize = 0.f ;
-
-	if ( _layerLayout != nullptr )
-		cellSize = _layerLayout->getCellSize0(_trueLayer) ;
-
-	//	streamlog_out( MESSAGE ) << "cellSize: " << cellSize << std::endl ;
 
 	return cellSize ;
 }

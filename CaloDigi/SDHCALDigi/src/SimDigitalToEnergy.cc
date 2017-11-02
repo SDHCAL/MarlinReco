@@ -17,7 +17,7 @@
 using namespace lcio ;
 using namespace marlin ;
 
-SimDigitalToEnergy SimDigitalToEnergy ;
+SimDigitalToEnergy aSimDigitalToEnergy ;
 
 SimDigitalToEnergy::SimDigitalToEnergy()
 	: RealisticCaloReco::Processor("SimDigitalToEnergy")

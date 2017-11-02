@@ -207,7 +207,6 @@ class SimDigital : public Processor
 		AIDA::IHistogram1D* _histoCellCharge = nullptr ;
 
 		std::string _encodingType  = "LCGEO" ;
-		std::string _hcalOption = "VIDEAU" ;
 } ;
 
 #endif

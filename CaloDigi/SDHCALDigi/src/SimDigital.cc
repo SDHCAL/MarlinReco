@@ -163,10 +163,7 @@ SimDigital::SimDigital()
 								_encodingType,
 								std::string("LCGEO")) ;
 
-	registerProcessorParameter( "HCALOption",
-								"The HCAL mechanical options, TESLA or VIDEAU",
-								_hcalOption,
-								std::string("VIDEAU")) ;
+
 
 	registerOptionalParameter("doThresholds",
 							  "Replace analog hit energy by value given in CalibrHCAL according to thresholds given in HCALThreshold",
@@ -250,7 +247,7 @@ void SimDigital::init()
 	// check that number of input and output collections names are the same
 	assert ( _outputCollections.size() == _inputCollections.size() ) ;
 	assert ( _outputRelCollections.size() == _inputCollections.size() ) ;
-	assert ( _encodingType == std::string("LCGEO") || _encodingType == std::string("MOKKA") || _encodingType == std::string("PROTO") ) ;
+	assert ( _encodingType == std::string("LCGEO") || _encodingType == std::string("PROTO") ) ;
 
 	if ( _inputGenericCollections.size() > 0 )
 		assert ( _inputGenericCollections.size() == _inputCollections.size() ) ;
@@ -447,8 +444,7 @@ SimDigital::cellIDHitMap SimDigital::createPotentialOutputHits(LCCollection* col
 			itstep.charge = chargeInducer->getCharge(aGeomCellId)*angleCorr ;
 
 			streamlog_out( DEBUG ) << "step at : " << itstep.step << "\t with a charge of : " << itstep.charge << std::endl ;
-		} //loop on itstep
-
+		}
 
 
 		auto sortStepWithCharge = [](const StepAndCharge& s1 , const StepAndCharge& s2) -> bool { return s1.charge > s2.charge ; } ;
@@ -566,24 +562,13 @@ void SimDigital::processCollection(LCCollection* inputCol , LCCollectionVec*& ou
 	outputCol->setFlag(flag.getFlag()) ;
 
 	SimDigitalGeomCellId* geomCellId = nullptr ;
-	if ( _encodingType == std::string("LCGEO") )
-	{
-		geomCellId = new SimDigitalGeomCellIdLCGEO(inputCol,outputCol) ;
-		dynamic_cast<SimDigitalGeomCellIdLCGEO*>(geomCellId)->setCellSize(_cellSize) ;
-	}
-	if ( _encodingType == std::string("PROTO") )
-	{
-		geomCellId = new SimDigitalGeomCellIdPROTO(inputCol,outputCol) ;
-		dynamic_cast<SimDigitalGeomCellIdPROTO*>(geomCellId)->setCellSize(_cellSize) ;
-	}
-	else if ( _encodingType == std::string("MOKKA") )
-	{
-		geomCellId = new SimDigitalGeomCellIdMOKKA(inputCol,outputCol) ;
-		if ( _hcalOption == std::string("VIDEAU") )
-			dynamic_cast<SimDigitalGeomCellIdMOKKA*>(geomCellId)->setGeom(SimDigitalGeomCellIdMOKKA::VIDEAU) ;
 
-		streamlog_out(DEBUG) << "geom : " << dynamic_cast<SimDigitalGeomCellIdMOKKA*>(geomCellId)->getGeom() << std::endl;
-	}
+	if ( _encodingType == std::string("LCGEO") )
+		geomCellId = new SimDigitalGeomCellIdLCGEO(inputCol,outputCol) ;
+	else if ( _encodingType == std::string("PROTO") )
+		geomCellId = new SimDigitalGeomCellIdPROTO(inputCol,outputCol) ;
+
+	geomCellId->setCellSize(_cellSize) ;
 
 	geomCellId->setLayerLayout(layout) ;
 	cellIDHitMap myHitMap = createPotentialOutputHits(inputCol , geomCellId) ;
@@ -640,8 +625,6 @@ void SimDigital::processEvent( LCEvent* evt )
 	LCFlagImpl flag ;
 	flag.setBit(LCIO::CHBIT_LONG) ;
 	flag.setBit(LCIO::RCHBIT_TIME);
-	flag.setBit(LCIO::RCHBIT_ENERGY_ERROR) ;    //open the energy error flag to store the MC Truth (for easy comparison == not a eligent way!!)
-
 
 	for (unsigned int i(0) ; i < _inputCollections.size() ; ++i)
 	{
@@ -686,7 +669,6 @@ void SimDigital::processEvent( LCEvent* evt )
 
 	for( const auto& it : _hitCharge)
 		_histoCellCharge->fill(it) ;
-
 
 	streamlog_out(MESSAGE) << "have processed " << _counters["|ALL"] << " events" << std::endl;
 }

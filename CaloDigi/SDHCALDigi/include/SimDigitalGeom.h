@@ -41,6 +41,8 @@ class SimDigitalGeomCellId
 		SimDigitalGeomCellId(LCCollection* inputCol, LCCollectionVec* outputCol) ;
 		virtual ~SimDigitalGeomCellId() ;
 
+		void setCellSize(float size) { _cellSize = size ; }
+
 		virtual float getCellSize() = 0 ;
 		virtual void setLayerLayout(CHT::Layout layout) = 0 ;
 
@@ -79,6 +81,8 @@ class SimDigitalGeomCellId
 		CellIDDecoder<SimCalorimeterHit> _decoder ;
 		CellIDEncoder<CalorimeterHitImpl> _encoder ;
 
+		float _cellSize = 0.0f ;
+
 		int _trueLayer = -999 ;
 		int _stave = -999 ;
 		int _module = -999 ;
@@ -93,8 +97,6 @@ class SimDigitalGeomCellId
 		const float* _hitPosition = nullptr ;
 
 		std::string _cellIDEncodingString = "" ;
-
-
 
 		//geometry debug tuples
 	public :
@@ -122,7 +124,7 @@ class SimDigitalGeomCellIdLCGEO : public SimDigitalGeomCellId
 		SimDigitalGeomCellIdLCGEO(LCCollection* inputCol, LCCollectionVec* outputCol) ;
 		virtual ~SimDigitalGeomCellIdLCGEO() ;
 
-		void setCellSize(float size) { _cellSize = size ; }
+
 		virtual float getCellSize() ;
 		virtual void setLayerLayout(CHT::Layout layout) ;
 
@@ -136,12 +138,7 @@ class SimDigitalGeomCellIdLCGEO : public SimDigitalGeomCellId
 
 		std::vector<std::string> _encodingString = { "layer", "stave", "module", "tower", "x", "y" } ;
 
-		float _cellSize = 0.0f ;
-
 		dd4hep::rec::LayeredCalorimeterData* _caloData = nullptr ;
-
-		//				dd4hep::DetElement theDetector;
-
 } ;
 
 class SimDigitalGeomCellIdPROTO : public SimDigitalGeomCellId
@@ -163,89 +160,6 @@ class SimDigitalGeomCellIdPROTO : public SimDigitalGeomCellId
 		virtual void processGeometry(SimCalorimeterHit* hit) ;
 
 		std::vector<std::string> _encodingString = { "K-1", "", "", "", "I", "J" } ;
-
-		float _cellSize = 0.0f ;
 } ;
-
-
-class SimDigitalGeomRPCFrame ;
-class SimDigitalGeomCellIdMOKKA : public SimDigitalGeomCellId
-{
-	public :
-		SimDigitalGeomCellIdMOKKA(LCCollection* inputCol, LCCollectionVec* outputCol) ;
-		virtual ~SimDigitalGeomCellIdMOKKA() ;
-
-
-		virtual float getCellSize() ;
-		virtual void setLayerLayout(CHT::Layout layout) ;
-
-		enum HCAL_GEOM {VIDEAU,TESLA} ;
-		void setGeom(HCAL_GEOM geom) { _geom = geom ; }
-
-		HCAL_GEOM getGeom() const { return _geom ; }
-
-
-		virtual std::unique_ptr<CalorimeterHitImpl> encode(int delta_I , int delta_J) ;
-
-		SimDigitalGeomCellIdMOKKA(const SimDigitalGeomCellIdMOKKA &toCopy) = delete ;
-		void operator=(const SimDigitalGeomCellIdMOKKA &toCopy) = delete ;
-
-	protected :
-		virtual void processGeometry(SimCalorimeterHit* hit) ;
-
-		std::vector<std::string> _encodingString = { "K-1", "S-1", "M", "", "I", "J" } ;
-
-
-		HCAL_GEOM _geom = TESLA ;
-
-		SimDigitalGeomRPCFrame* _normal_I_J_setter = nullptr ;
-		const gear::LayerLayout* _layerLayout = nullptr ;
-
-
-		friend class SimDigitalGeomRPCFrame ;
-} ;
-
-
-//hierarchy of classes to determine the RPC reference frame
-class SimDigitalGeomRPCFrame
-{
-	public:
-		SimDigitalGeomRPCFrame(SimDigitalGeomCellIdMOKKA& h) : _layerInfo(h) {}
-		virtual ~SimDigitalGeomRPCFrame() ;
-		virtual void setRPCFrame() = 0 ;
-	private :
-		SimDigitalGeomCellIdMOKKA& _layerInfo ;
-	protected :
-		int stave() const { return _layerInfo._stave ; }
-		int module() const { return _layerInfo._module ; }
-		LCVector3D& normal() const { return _layerInfo._normal ; }
-		LCVector3D& Iaxis() const { return _layerInfo._Iaxis ; }
-		LCVector3D& Jaxis() const { return _layerInfo._Jaxis ; }
-};
-
-class SimDigitalGeomRPCFrame_TESLA_BARREL : public SimDigitalGeomRPCFrame
-{
-	public:
-		SimDigitalGeomRPCFrame_TESLA_BARREL(SimDigitalGeomCellIdMOKKA& h) : SimDigitalGeomRPCFrame(h) {}
-		void setRPCFrame();
-};
-class SimDigitalGeomRPCFrame_VIDEAU_BARREL : public SimDigitalGeomRPCFrame
-{
-	public:
-		SimDigitalGeomRPCFrame_VIDEAU_BARREL(SimDigitalGeomCellIdMOKKA& h) : SimDigitalGeomRPCFrame(h) {}
-		void setRPCFrame();
-};
-class SimDigitalGeomRPCFrame_TESLA_ENDCAP : public SimDigitalGeomRPCFrame
-{
-	public:
-		SimDigitalGeomRPCFrame_TESLA_ENDCAP(SimDigitalGeomCellIdMOKKA& h) : SimDigitalGeomRPCFrame(h) {}
-		void setRPCFrame();
-};
-class SimDigitalGeomRPCFrame_VIDEAU_ENDCAP : public SimDigitalGeomRPCFrame
-{
-	public:
-		SimDigitalGeomRPCFrame_VIDEAU_ENDCAP(SimDigitalGeomCellIdMOKKA& h) : SimDigitalGeomRPCFrame(h) {}
-		void setRPCFrame();
-};
 
 #endif //SimDigitalGeom_h

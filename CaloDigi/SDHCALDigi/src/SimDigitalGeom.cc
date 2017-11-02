@@ -49,6 +49,19 @@ SimDigitalGeomCellIdLCGEO::SimDigitalGeomCellIdLCGEO(LCCollection* inputCol, LCC
 	streamlog_out( DEBUG ) << "we will use lcgeo!" << std::endl ;
 }
 
+SimDigitalGeomCellIdPROTO::SimDigitalGeomCellIdPROTO(LCCollection* inputCol, LCCollectionVec* outputCol)
+	: SimDigitalGeomCellId(inputCol , outputCol)
+	//	  theDetector()
+{
+	streamlog_out( DEBUG ) << "we will use proto!" << std::endl ;
+
+	_normal.set(0,0,1) ;
+	_Iaxis.set(1,0,0) ;
+	_Jaxis.set(0,1,0) ;
+
+	_currentHCALCollectionCaloLayout = CHT::endcap ;
+}
+
 SimDigitalGeomCellIdMOKKA::SimDigitalGeomCellIdMOKKA(LCCollection* inputCol, LCCollectionVec* outputCol)
 	: SimDigitalGeomCellId(inputCol , outputCol)
 {
@@ -68,7 +81,7 @@ SimDigitalGeomCellIdMOKKA::SimDigitalGeomCellIdMOKKA(LCCollection* inputCol, LCC
 
 	streamlog_out( DEBUG ) << "we will use gear!" << std::endl ;
 	streamlog_out( DEBUG ) << "gear: " << Global::GEAR << std::endl ;
-//	streamlog_out( DEBUG )<< "!!!!!!(Videau=0, TESLA=1) Geometry is _geom= : "<<_geom << std::endl;
+	//	streamlog_out( DEBUG )<< "!!!!!!(Videau=0, TESLA=1) Geometry is _geom= : "<<_geom << std::endl;
 }
 
 SimDigitalGeomCellId::~SimDigitalGeomCellId()
@@ -76,6 +89,10 @@ SimDigitalGeomCellId::~SimDigitalGeomCellId()
 }
 
 SimDigitalGeomCellIdLCGEO::~SimDigitalGeomCellIdLCGEO()
+{
+}
+
+SimDigitalGeomCellIdPROTO::~SimDigitalGeomCellIdPROTO()
 {
 }
 
@@ -137,7 +154,7 @@ void SimDigitalGeomRPCFrame_TESLA_ENDCAP::setRPCFrame()
 //valid also for all endcap rings (VIDEAU and TESLA)
 void SimDigitalGeomRPCFrame_VIDEAU_ENDCAP::setRPCFrame()
 {
-//	same as before
+	//	same as before
 	if (module()==6)
 	{
 		//streamlog_out( DEBUG )<< "!!!!!!!!!! VIDEAU_ENDCAP : module=6 "<< std::endl;
@@ -161,27 +178,27 @@ void SimDigitalGeomRPCFrame_VIDEAU_ENDCAP::setRPCFrame()
 		streamlog_out(ERROR) << "ERROR : unknown module for endcap or endcapring " << module() << std::endl;
 	}
 
-//	//cheat
-//	if (module()==6)
-//	{
-//		normal().set(0,0,1);
-//		Iaxis().set(0,1,0);
-//		Jaxis().set(1,0,0);
-//		Iaxis().rotateZ(stave()*(-90)*CLHEP::degree);
-//		Jaxis().rotateZ(stave()*(-90)*CLHEP::degree);
-//	}
-//	else if (module()==0)
-//	{
-//		normal().set(0,0,-1);
-//		Iaxis().set(0,1,0);
-//		Jaxis().set(-1,0,0);
-//		Iaxis().rotateZ(stave()*90*CLHEP::degree);
-//		Jaxis().rotateZ(stave()*90*CLHEP::degree);
-//	}
-//	else
-//	{
-//		streamlog_out(ERROR) << "ERROR : unknown module for endcap or endcapring " << module() << std::endl;
-//	}
+	//	//cheat
+	//	if (module()==6)
+	//	{
+	//		normal().set(0,0,1);
+	//		Iaxis().set(0,1,0);
+	//		Jaxis().set(1,0,0);
+	//		Iaxis().rotateZ(stave()*(-90)*CLHEP::degree);
+	//		Jaxis().rotateZ(stave()*(-90)*CLHEP::degree);
+	//	}
+	//	else if (module()==0)
+	//	{
+	//		normal().set(0,0,-1);
+	//		Iaxis().set(0,1,0);
+	//		Jaxis().set(-1,0,0);
+	//		Iaxis().rotateZ(stave()*90*CLHEP::degree);
+	//		Jaxis().rotateZ(stave()*90*CLHEP::degree);
+	//	}
+	//	else
+	//	{
+	//		streamlog_out(ERROR) << "ERROR : unknown module for endcap or endcapring " << module() << std::endl;
+	//	}
 }
 
 void SimDigitalGeomCellId::createStepAndChargeVec(SimCalorimeterHit* hit , std::vector<StepAndCharge>& vec)
@@ -370,6 +387,17 @@ void SimDigitalGeomCellIdLCGEO::processGeometry(SimCalorimeterHit* hit)
 	_Jaxis.set(dir_j.X(), dir_j.Y(), dir_j.Z()) ;
 }
 
+void SimDigitalGeomCellIdPROTO::processGeometry(SimCalorimeterHit* hit)
+{
+	_cellIDvalue = _decoder( hit ).getValue() ;
+
+	_trueLayer = _decoder( hit )[_encodingString.at(0)] ;
+	_Iy        = _decoder( hit )[_encodingString.at(4)] ;
+	_Jz        = _decoder( hit )[_encodingString.at(5)] ;
+
+	_hitPosition = hit->getPosition() ;
+}
+
 void SimDigitalGeomCellIdMOKKA::processGeometry(SimCalorimeterHit* hit)
 {
 	_cellIDvalue = _decoder( hit ).getValue() ;
@@ -529,70 +557,83 @@ void SimDigitalGeomCellId::fillDebugTupleGeometryStep(SimCalorimeterHit* hit , c
 }
 
 
-void SimDigitalGeomCellIdLCGEO::encode(CalorimeterHitImpl* hit, int delta_I, int delta_J)
+std::unique_ptr<CalorimeterHitImpl> SimDigitalGeomCellIdLCGEO::encode(int delta_I, int delta_J)
 {
 	_encoder.setValue(_cellIDvalue) ;
 
-	int RealIy = _Iy+delta_I ;
-	//  streamlog_out( DEBUG ) << "RealIy, _Iy, delta_I" << std::endl <<RealIy <<" "<<_Iy <<" " <<delta_I<<std::endl;
+	int RealIy = _Iy + delta_I ;
+	int RealJz = _Jz + delta_J ;
 
 	_encoder[_encodingString.at(4)] = RealIy ;
-	int RealJz = _Jz+delta_J ;
-	//  streamlog_out( DEBUG ) << "RealIy, _Iy, delta_I" <<RealIy<<" "<<_Iy<<" "<<delta_I<< std::endl;
-	//  streamlog_out( DEBUG ) << "RealJz, _Jz, delta_J" <<RealJz<<" "<<_Jz<<" "<<delta_J<< std::endl;
-	//       <<RealJz <<" "<<_Jz <<" " <<delta_J<<std::endl;
-
-	// Depending on the segmentation type:   Barrel,EndcapRing - CartesianGridXY;  EndCaps- CartesianGridXZ !!!
-
 	_encoder[_encodingString.at(5)] = RealJz ;
 
-	_encoder.setCellID( hit );
-	//streamlog_out( DEBUG ) << "CellID0: " << hit->getCellID0() << ", CellID1: " << hit->getCellID1() << " --> " << _encoder.valueString() << std::endl;
+	std::unique_ptr<CalorimeterHitImpl> hit( new CalorimeterHitImpl ) ;
+	_encoder.setCellID( hit.get() ) ;
+
 	hit->setType( CHT( CHT::had, CHT::hcal , _currentHCALCollectionCaloLayout,  _trueLayer ) );
-	//  streamlog_out( DEBUG )   <<"getCellSize() "<<getCellSize()<<" layer " <<_trueLayer<< std::endl;
 
 	float posB[3] ;
 	posB[0] = static_cast<float>( _hitPosition[0] + getCellSize()*( delta_I*_Iaxis.x() + delta_J*_Jaxis.x() ) ) ;
 	posB[1] = static_cast<float>( _hitPosition[1] + getCellSize()*( delta_I*_Iaxis.y() + delta_J*_Jaxis.y() ) ) ;
 	posB[2] = static_cast<float>( _hitPosition[2] + getCellSize()*( delta_I*_Iaxis.z() + delta_J*_Jaxis.z() ) ) ;
 	hit->setPosition(posB) ;
+
+	return hit ;
 }
 
-void SimDigitalGeomCellIdMOKKA::encode(CalorimeterHitImpl* hit, int delta_I, int delta_J)
+std::unique_ptr<CalorimeterHitImpl> SimDigitalGeomCellIdPROTO::encode(int delta_I , int delta_J)
 {
-	_encoder.setValue(_cellIDvalue);
+	_encoder.setValue(_cellIDvalue) ;
 
-	int RealIy=_Iy+delta_I;
-	//  streamlog_out( DEBUG ) << "RealIy, _Iy, delta_I" << std::endl <<RealIy <<" "<<_Iy <<" " <<delta_I<<std::endl;
+	int RealIy = _Iy + delta_I ;
+	int RealJz = _Jz + delta_J ;
 
-	if (RealIy<0 || abs(RealIy)>330)
-		RealIy=0; //FIXME the 330 value should depend on the cellSize and on the Layer
+	if ( RealIy < 0 || RealJz < 0 )
+		return std::unique_ptr<CalorimeterHitImpl>(nullptr) ;
+
 	_encoder[_encodingString.at(4)] = RealIy ;
-	int RealJz=_Jz+delta_J;
-	//  streamlog_out( DEBUG ) << "RealIy, _Iy, delta_I" <<RealIy<<" "<<_Iy<<" "<<delta_I<< std::endl;
-	//  streamlog_out( DEBUG ) << "RealJz, _Jz, delta_J" <<RealJz<<" "<<_Jz<<" "<<delta_J<< std::endl;
-	//       <<RealJz <<" "<<_Jz <<" " <<delta_J<<std::endl;
-
-	if (RealJz<0 || abs(RealJz)>330)
-		RealJz=0; //FIXME the 330 value should depend on the cellSize and on the Layer
-
-	if (abs(RealIy)>330||abs(RealJz)>330)
-		streamlog_out( DEBUG ) << "RealIy, RealJz" << std::endl <<RealIy <<"   "<<RealJz <<std::endl;
-
-	// Depending on the segmentation type:   Barrel,EndcapRing - CartesianGridXY;  EndCaps- CartesianGridXZ !!!
-
 	_encoder[_encodingString.at(5)] = RealJz ;
 
-	_encoder.setCellID( hit );
-	//streamlog_out( DEBUG ) << "CellID0: " << hit->getCellID0() << ", CellID1: " << hit->getCellID1() << " --> " << _encoder.valueString() << std::endl;
+	std::unique_ptr<CalorimeterHitImpl> hit( new CalorimeterHitImpl ) ;
+	_encoder.setCellID( hit.get() ) ;
+
 	hit->setType( CHT( CHT::had, CHT::hcal , _currentHCALCollectionCaloLayout,  _trueLayer ) );
-	//  streamlog_out( DEBUG )   <<"getCellSize() "<<getCellSize()<<" layer " <<_trueLayer<< std::endl;
 
 	float posB[3] ;
 	posB[0] = static_cast<float>( _hitPosition[0] + getCellSize()*( delta_I*_Iaxis.x() + delta_J*_Jaxis.x() ) ) ;
 	posB[1] = static_cast<float>( _hitPosition[1] + getCellSize()*( delta_I*_Iaxis.y() + delta_J*_Jaxis.y() ) ) ;
 	posB[2] = static_cast<float>( _hitPosition[2] + getCellSize()*( delta_I*_Iaxis.z() + delta_J*_Jaxis.z() ) ) ;
 	hit->setPosition(posB) ;
+
+	return hit ;
+}
+
+std::unique_ptr<CalorimeterHitImpl> SimDigitalGeomCellIdMOKKA::encode(int delta_I, int delta_J)
+{
+	_encoder.setValue(_cellIDvalue) ;
+
+	int RealIy = _Iy + delta_I ;
+	int RealJz = _Jz + delta_J ;
+
+	if (RealIy<0 || abs(RealIy)>330 || RealJz<0 || abs(RealJz)>330)
+		return std::unique_ptr<CalorimeterHitImpl>(nullptr) ;
+
+	_encoder[_encodingString.at(4)] = RealIy ;
+	_encoder[_encodingString.at(5)] = RealJz ;
+
+	std::unique_ptr<CalorimeterHitImpl> hit( new CalorimeterHitImpl ) ;
+
+	_encoder.setCellID( hit.get() ) ;
+
+	hit->setType( CHT( CHT::had, CHT::hcal , _currentHCALCollectionCaloLayout,  _trueLayer ) ) ;
+
+	float posB[3] ;
+	posB[0] = static_cast<float>( _hitPosition[0] + getCellSize()*( delta_I*_Iaxis.x() + delta_J*_Jaxis.x() ) ) ;
+	posB[1] = static_cast<float>( _hitPosition[1] + getCellSize()*( delta_I*_Iaxis.y() + delta_J*_Jaxis.y() ) ) ;
+	posB[2] = static_cast<float>( _hitPosition[2] + getCellSize()*( delta_I*_Iaxis.z() + delta_J*_Jaxis.z() ) ) ;
+	hit->setPosition(posB) ;
+
+	return hit ;
 }
 
 
@@ -633,6 +674,11 @@ void SimDigitalGeomCellIdLCGEO::setLayerLayout(CHT::Layout layout)
 		//streamlog_out( DEBUG ) << "det size: " << det.size() << ", type: " << det.at(0).type() << endl;
 	}
 
+}
+
+void SimDigitalGeomCellIdPROTO::setLayerLayout(CHT::Layout layout)
+{
+	_currentHCALCollectionCaloLayout = layout ;
 }
 
 void SimDigitalGeomCellIdMOKKA::setLayerLayout(CHT::Layout layout)
@@ -701,7 +747,7 @@ float SimDigitalGeomCellIdMOKKA::getCellSize()
 	if ( _layerLayout != nullptr )
 		cellSize = _layerLayout->getCellSize0(_trueLayer) ;
 
-//	streamlog_out( MESSAGE ) << "cellSize: " << cellSize << std::endl ;
+	//	streamlog_out( MESSAGE ) << "cellSize: " << cellSize << std::endl ;
 
 	return cellSize ;
 }

@@ -53,8 +53,7 @@ class SimDigitalGeomCellId
 		void createStepAndChargeVec(SimCalorimeterHit* hit , const std::vector<LCGenericObject*>& genericVec , std::vector<StepAndCharge>& vec) ;
 
 	public :
-		virtual void encode(CalorimeterHitImpl *hit , int delta_I , int delta_J) = 0 ;
-
+		virtual std::unique_ptr<CalorimeterHitImpl> encode(int delta_I , int delta_J) = 0 ;
 
 		int I() const { return _Iy ; }
 		int J() const { return _Jz ; }
@@ -127,7 +126,7 @@ class SimDigitalGeomCellIdLCGEO : public SimDigitalGeomCellId
 		virtual float getCellSize() ;
 		virtual void setLayerLayout(CHT::Layout layout) ;
 
-		virtual void encode(CalorimeterHitImpl *hit , int delta_I , int delta_J) ;
+		virtual std::unique_ptr<CalorimeterHitImpl> encode(int delta_I , int delta_J) ;
 
 		SimDigitalGeomCellIdLCGEO(const SimDigitalGeomCellIdLCGEO &toCopy) = delete ;
 		void operator=(const SimDigitalGeomCellIdLCGEO &toCopy) = delete ;
@@ -144,6 +143,30 @@ class SimDigitalGeomCellIdLCGEO : public SimDigitalGeomCellId
 		//				dd4hep::DetElement theDetector;
 
 } ;
+
+class SimDigitalGeomCellIdPROTO : public SimDigitalGeomCellId
+{
+	public :
+		SimDigitalGeomCellIdPROTO(LCCollection* inputCol, LCCollectionVec* outputCol) ;
+		virtual ~SimDigitalGeomCellIdPROTO() ;
+
+		void setCellSize(float size) { _cellSize = size ; }
+		virtual float getCellSize() { return _cellSize ; }
+		virtual void setLayerLayout(CHT::Layout layout) ;
+
+		virtual std::unique_ptr<CalorimeterHitImpl> encode(int delta_I , int delta_J) ;
+
+		SimDigitalGeomCellIdPROTO(const SimDigitalGeomCellIdPROTO &toCopy) = delete ;
+		void operator=(const SimDigitalGeomCellIdPROTO &toCopy) = delete ;
+
+	protected :
+		virtual void processGeometry(SimCalorimeterHit* hit) ;
+
+		std::vector<std::string> _encodingString = { "K-1", "", "", "", "I", "J" } ;
+
+		float _cellSize = 0.0f ;
+} ;
+
 
 class SimDigitalGeomRPCFrame ;
 class SimDigitalGeomCellIdMOKKA : public SimDigitalGeomCellId
@@ -162,7 +185,7 @@ class SimDigitalGeomCellIdMOKKA : public SimDigitalGeomCellId
 		HCAL_GEOM getGeom() const { return _geom ; }
 
 
-		virtual void encode(CalorimeterHitImpl *hit , int delta_I , int delta_J) ;
+		virtual std::unique_ptr<CalorimeterHitImpl> encode(int delta_I , int delta_J) ;
 
 		SimDigitalGeomCellIdMOKKA(const SimDigitalGeomCellIdMOKKA &toCopy) = delete ;
 		void operator=(const SimDigitalGeomCellIdMOKKA &toCopy) = delete ;

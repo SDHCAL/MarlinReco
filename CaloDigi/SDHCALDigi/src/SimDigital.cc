@@ -1,4 +1,5 @@
 #include "SimDigital.h"
+
 #include <EVENT/LCCollection.h>
 #include <EVENT/SimCalorimeterHit.h>
 #include <IMPL/CalorimeterHitImpl.h>
@@ -8,37 +9,22 @@
 #include <IMPL/LCRelationImpl.h>
 #include <marlin/Global.h>
 #include <marlin/Exceptions.h>
-#include <gear/GEAR.h>
-#include <gear/GearParameters.h>
-#include <gear/CalorimeterParameters.h>
-#include <gear/LayerLayout.h>
+
 #include <EVENT/LCParameters.h>
 #include <UTIL/CellIDDecoder.h>
 #include <UTIL/CellIDEncoder.h>
-#include <UTIL/BitField64.h>
 
 #include <iostream>
 #include <string>
 #include <algorithm>
-#include <cmath>
-#include <fstream>
-#include <time.h>
+
 // ----- include for verbosity dependend logging ---------
 #include "marlin/VerbosityLevels.h"
 #include "CalorimeterHitType.h"
-#include "CLHEP/Units/SystemOfUnits.h"
 
 #include <marlin/AIDAProcessor.h>
 #include <AIDA/ITupleFactory.h>
 #include <AIDA/ITuple.h>
-
-
-
-#include <TROOT.h>
-#include <TMath.h>
-#include "TTree.h"
-#include "TH1F.h"
-#include "TRandom.h"
 
 #include <DDSegmentation/BitField64.h>
 #include <DDRec/CellIDPositionConverter.h>
@@ -159,16 +145,16 @@ SimDigital::SimDigital()
 
 
 	registerProcessorParameter( "CellIDEncodingStringType",
-								"The type of the encoding, LCGEO or MOKKA",
+								"The type of the encoding, LCGEO or PROTO",
 								_encodingType,
 								std::string("LCGEO")) ;
 
 
 
-	registerOptionalParameter("doThresholds",
-							  "Replace analog hit energy by value given in CalibrHCAL according to thresholds given in HCALThreshold",
-							  _doThresholds,
-							  true) ;
+	registerProcessorParameter("doThresholds",
+							   "Replace analog hit energy by value given in CalibrHCAL according to thresholds given in HCALThreshold",
+							   _doThresholds,
+							   true) ;
 
 
 	registerProcessorParameter( "PolyaOption" ,
@@ -319,7 +305,7 @@ void SimDigital::init()
 void SimDigital::removeAdjacentStep(std::vector<StepAndCharge>& vec)
 {
 	if ( vec.size() == 0 )
-		return;
+		return ;
 	std::vector<StepAndCharge>::iterator first = vec.begin() ;
 	std::vector<StepAndCharge>::iterator lasttobekept = vec.end() ;
 	lasttobekept-- ;
@@ -435,11 +421,12 @@ SimDigital::cellIDHitMap SimDigital::createPotentialOutputHits(LCCollection* col
 		fillTupleStep(steps,3) ;
 
 
+		float invGasGapWidth = 1.f/_gasGapWidth ;
 		for ( auto& itstep : steps )
 		{
 			float angleCorr = 1 ;
-			if ( itstep.stepLength / _gasGapWidth > 1 )
-				angleCorr = std::pow( itstep.stepLength / _gasGapWidth , _angleCorrPow ) ;
+			if ( itstep.stepLength*invGasGapWidth > 1 )
+				angleCorr = std::pow( itstep.stepLength*invGasGapWidth , _angleCorrPow ) ;
 
 			itstep.charge = chargeInducer->getCharge(aGeomCellId)*angleCorr ;
 

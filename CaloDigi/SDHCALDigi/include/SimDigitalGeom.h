@@ -14,9 +14,6 @@
 #include "CalorimeterHitType.h" //in MarlinUtil
 #include "marlinutil/LCGeometryTypes.h"
 
-#include <gear/GearParameters.h>
-#include <gear/CalorimeterParameters.h>
-#include <gear/LayerLayout.h>
 
 #include "DD4hep/Factories.h"
 #include "DD4hep/DD4hepUnits.h"

@@ -11,39 +11,23 @@
 #include <limits>
 #include <memory>
 
-#include <stdlib.h>
 #include <EVENT/LCCollection.h>
 #include <EVENT/SimCalorimeterHit.h>
 #include <IMPL/CalorimeterHitImpl.h>
 #include <IMPL/LCCollectionVec.h>
 #include <IMPL/LCFlagImpl.h>
-#include <UTIL/CellIDEncoder.h>
-#include <UTIL/CellIDDecoder.h>
+
 #include <marlin/Global.h>
-#include <gear/GearParameters.h>
-#include <gear/CalorimeterParameters.h>
-#include <gear/LayerLayout.h>
-#include <TROOT.h>
+
 #include <TFile.h>
 #include <TF2.h>
 #include <TH1.h>
-#include "TH1F.h"
 
 #include "CalorimeterHitType.h" //in MarlinUtil
 #include "marlinutil/LCGeometryTypes.h"
 
 #include <AIDA/IHistogramFactory.h>
 #include <AIDA/IHistogram1D.h>
-
-#include "DD4hep/Factories.h"
-#include "DD4hep/DD4hepUnits.h"
-#include "DDRec/DetectorData.h"
-#include "DD4hep/DetType.h"
-#include "DDRec/DetectorData.h"
-#include "DDRec/DDGear.h"
-#include "DDRec/MaterialManager.h"
-#include "DDRec/API/Calorimeter.h"
-#include "DDRec/DetectorSurfaces.h"
 
 #include "SimDigitalGeom.h"
 #include "ChargeSpreader.h"

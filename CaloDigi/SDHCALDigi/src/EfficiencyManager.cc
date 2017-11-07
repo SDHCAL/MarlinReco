@@ -1,7 +1,6 @@
 #include "EfficiencyManager.h"
 #include "SimDigital.h"
 
-#include <numeric>
 #include <marlin/VerbosityLevels.h>
 
 #include <TFile.h>

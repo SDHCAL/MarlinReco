@@ -1,16 +1,12 @@
 #include "ChargeInducer.h"
 #include "SimDigital.h"
 
-#include <fstream>
 #include <sstream>
-
-#include <TMath.h>
 
 #include <marlin/VerbosityLevels.h>
 
 #include <TFile.h>
 #include <TTree.h>
-
 
 ChargeInducer::ChargeInducer()
 	: generator()
@@ -28,7 +24,7 @@ void ChargeInducer::setSeed(unsigned int value)
 
 UniformPolya::UniformPolya(float _qbar , float _theta)
 	: ChargeInducer() ,
-	  gammadist( boost::gamma_distribution<float>( _qbar/_theta , _theta ) )
+	  gammadist( std::gamma_distribution<float>( _qbar/_theta , _theta ) )
 {
 }
 
@@ -89,7 +85,7 @@ void AsicPolya::readFile(std::string fileName)
 		float alpha = qbarAsic/deltaAsic ;
 		float delta = deltaAsic ;
 
-		boost::gamma_distribution<float> localDist( alpha , delta ) ;
+		std::gamma_distribution<float> localDist( alpha , delta ) ;
 
 		int iAsic = static_cast<int>( (position->at(0)-10.408)/(8*10.408) ) ;
 		int jAsic = static_cast<int>( (position->at(1)-10.408)/(8*10.408) ) ;
@@ -109,7 +105,7 @@ float AsicPolya::getCharge(SimDigitalGeomCellId* cellID)
 	//	int asicKey = (cellID.I()-1)/8 + ((cellID.J()-1)/8)*12 + cellID.K()*1000 ;
 	AsicKey asicKey(cellID->K() , (cellID->I()-1)/8 , (cellID->J()-1)/8) ;
 
-	std::map<AsicKey, boost::gamma_distribution<float> >::iterator it = polyaMap.find( asicKey ) ;
+	std::map<AsicKey, std::gamma_distribution<float> >::iterator it = polyaMap.find( asicKey ) ;
 
 	if ( it == polyaMap.end() )
 	{

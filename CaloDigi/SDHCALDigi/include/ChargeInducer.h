@@ -4,10 +4,7 @@
 #include <string>
 #include <map>
 
-
-#include <boost/random/mersenne_twister.hpp>
-#include <boost/random/gamma_distribution.hpp>
-
+#include <random>
 
 class SimDigitalGeomCellId ;
 struct AsicKey ;
@@ -22,7 +19,7 @@ class ChargeInducer
 		void setSeed(unsigned int value) ;
 
 	protected :
-		boost::mt19937 generator ;
+		std::mt19937 generator ;
 } ;
 
 class UniformPolya : public ChargeInducer
@@ -35,7 +32,7 @@ class UniformPolya : public ChargeInducer
 
 
 	protected :
-		boost::gamma_distribution<float> gammadist ;
+		std::gamma_distribution<float> gammadist ;
 
 } ;
 
@@ -51,7 +48,7 @@ class AsicPolya : public UniformPolya
 	protected :
 		void readFile(std::string fileName) ;
 
-		std::map<AsicKey , boost::gamma_distribution<float> > polyaMap ;
+		std::map<AsicKey , std::gamma_distribution<float> > polyaMap ;
 } ;
 
 #endif //ChargeInducer_h

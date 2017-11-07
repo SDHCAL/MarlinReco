@@ -2,7 +2,6 @@
 #define SimDigitalToEnergy_h
 
 #include <marlin/Processor.h>
-#include <IMPL/LCCollectionVec.h>
 
 #include "RealisticCaloReco.h"
 

@@ -3,10 +3,7 @@
 
 #include <marlin/Global.h>
 
-#include <vector>
 #include <map>
-#include <utility>
-#include <set>
 
 struct AsicKey ;
 class SimDigitalGeomCellId ;

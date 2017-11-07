@@ -1,18 +1,8 @@
 #include "SimDigitalToEnergy.h"
 
-#include <limits>
-#include <marlin/Exceptions.h>
-#include <EVENT/SimCalorimeterHit.h>
+#include <cassert>
+
 #include <EVENT/CalorimeterHit.h>
-#include <IMPL/CalorimeterHitImpl.h>
-#include <IMPL/LCRelationImpl.h>
-#include <IMPL/LCFlagImpl.h>
-#include <UTIL/LCRelationNavigator.h>
-
-#include <UTIL/CellIDEncoder.h>
-#include <UTIL/CellIDDecoder.h>
-
-#include <DD4hep/Factories.h>
 
 using namespace lcio ;
 using namespace marlin ;
@@ -39,8 +29,6 @@ void SimDigitalToEnergy::init()
 
 	RealisticCaloReco::init() ;
 	assert( _energyCoefficients.size() > 0 ) ;
-
-	_flag.setBit(LCIO::RCHBIT_ID1) ;
 }
 
 float SimDigitalToEnergy::reconstructEnergy(const CalorimeterHit* hit)

@@ -135,7 +135,7 @@ class SimDigital : public Processor
 		cellIDHitMap createPotentialOutputHits(LCCollection* col , SimDigitalGeomCellId* aGeomCellId) ;
 
 		void removeAdjacentStep(std::vector<StepAndCharge>& vec) ;
-		void fillTupleStep(std::vector<StepAndCharge>& vec , int level) ;
+		void fillTupleStep(const std::vector<StepAndCharge>& vec , int level) ;
 		void removeHitsBelowThreshold(cellIDHitMap& myHitMap , float threshold) ;
 		void applyThresholds(cellIDHitMap& myHitMap) ;
 

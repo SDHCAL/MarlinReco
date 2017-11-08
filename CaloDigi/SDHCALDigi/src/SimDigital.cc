@@ -55,7 +55,7 @@ SimDigital::SimDigital()
 	std::vector<std::string> genCollections = {} ;
 	registerInputCollections( LCIO::LCGENERICOBJECT,
 							  "inputGenericCollections" ,
-							  "Collections of generic objects containing additional step informations" ,
+							  "Collections of generic objects containing additional step informations (for SDHCAL Proto standalone simulation only)" ,
 							  _inputGenericCollections ,
 							  genCollections) ;
 
@@ -235,6 +235,9 @@ void SimDigital::init()
 	assert ( _outputRelCollections.size() == _inputCollections.size() ) ;
 	assert ( _encodingType == std::string("LCGEO") || _encodingType == std::string("PROTO") ) ;
 
+	if ( _encodingType == std::string("LCGEO") )
+		assert ( _inputGenericCollections.empty() ) ;
+
 	if ( _inputGenericCollections.size() > 0 )
 		assert ( _inputGenericCollections.size() == _inputCollections.size() ) ;
 
@@ -336,10 +339,10 @@ void SimDigital::removeAdjacentStep(std::vector<StepAndCharge>& vec)
 }
 
 
-void SimDigital::fillTupleStep(std::vector<StepAndCharge>& vec,int level)
+void SimDigital::fillTupleStep(const std::vector<StepAndCharge>& vec,int level)
 {
 	_tupleStepFilter->fill(level,int(vec.size()));
-	for (std::vector<StepAndCharge>::iterator it=vec.begin(); it != vec.end(); it++)
+	for (std::vector<StepAndCharge>::const_iterator it=vec.begin(); it != vec.end(); it++)
 	{
 		_debugTupleStepFilter->fill(0,level);
 		_debugTupleStepFilter->fill(1,it->time) ;
@@ -347,7 +350,7 @@ void SimDigital::fillTupleStep(std::vector<StepAndCharge>& vec,int level)
 		_debugTupleStepFilter->fill(3,it->step.y()) ;
 		_debugTupleStepFilter->fill(4,it->step.z()) ;
 		float minDist=20000;
-		for (std::vector<StepAndCharge>::iterator itB=vec.begin(); itB != vec.end(); itB++)
+		for (std::vector<StepAndCharge>::const_iterator itB=vec.begin(); itB != vec.end(); itB++)
 		{
 			if (itB == it)
 				continue ;

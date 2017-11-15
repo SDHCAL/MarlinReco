@@ -1,6 +1,8 @@
 #ifndef SimDigitalGeom_h
 #define SimDigitalGeom_h
 
+#include <utility>
+
 #include <marlin/Processor.h>
 #include <IMPL/LCCollectionVec.h>
 
@@ -31,6 +33,26 @@ class ITuple ;
 
 struct StepAndCharge ;
 
+struct PotentialSameTrackID
+{
+		PotentialSameTrackID(int _pdgStep , int _pdgParent)
+			: PDGStep{_pdgStep} , PDGParent{ _pdgParent}
+		{}
+
+		int PDGStep ;
+		int PDGParent ;
+
+		bool operator<(const PotentialSameTrackID& b) const
+		{
+			return std::tie( PDGStep , PDGParent ) < std::tie(b.PDGStep , b.PDGParent ) ;
+		}
+		bool operator==(const PotentialSameTrackID& b) const
+		{
+			return std::tie( PDGStep , PDGParent ) == std::tie(b.PDGStep , b.PDGParent ) ;
+		}
+
+} ;
+
 class SimDigitalGeomCellId
 {
 	public :
@@ -42,13 +64,13 @@ class SimDigitalGeomCellId
 		virtual float getCellSize() = 0 ;
 		virtual void setLayerLayout(CHT::Layout layout) = 0 ;
 
-		std::vector<StepAndCharge> decode(SimCalorimeterHit* hit) ;
-		std::vector<StepAndCharge> decode(SimCalorimeterHit* hit , const std::map<dd4hep::long64, std::vector<LCGenericObject*> >& map) ;
+		std::vector<StepAndCharge> decode(SimCalorimeterHit* hit , bool link) ;
 
 	protected :
 		virtual void processGeometry(SimCalorimeterHit* hit) = 0 ;
-		void createStepAndChargeVec(SimCalorimeterHit* hit , std::vector<StepAndCharge>& vec) ;
-		void createStepAndChargeVec(SimCalorimeterHit* hit , const std::vector<LCGenericObject*>& genericVec , std::vector<StepAndCharge>& vec) ;
+		void createStepAndChargeVec(SimCalorimeterHit* hit , std::vector<StepAndCharge>& vec , bool link) ;
+
+		void linkSteps(std::vector<StepAndCharge>& vec) ;
 
 	public :
 		virtual std::unique_ptr<CalorimeterHitImpl> encode(int delta_I , int delta_J) = 0 ;

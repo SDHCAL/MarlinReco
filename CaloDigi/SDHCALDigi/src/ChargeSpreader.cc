@@ -24,32 +24,27 @@ void ChargeSpreader::addCharge(float charge, float posI, float posJ , SimDigital
 	if ( parameters.padSeparation > parameters.cellSize )
 		return ;
 
-	int icell = static_cast<int>( parameters.range/parameters.cellSize ) ;
-
 	float chargeTotCheck = 0 ;
-	for (int I = -icell ; I <= icell ; I++)
+
+	int minCellI = static_cast<int>( std::round(posI-parameters.range)/parameters.cellSize ) ;
+	int maxCellI = static_cast<int>( std::round(posI+parameters.range)/parameters.cellSize ) ;
+
+	int minCellJ = static_cast<int>( std::round(posJ-parameters.range)/parameters.cellSize ) ;
+	int maxCellJ = static_cast<int>( std::round(posJ+parameters.range)/parameters.cellSize ) ;
+
+	for ( int I = minCellI ; I <= maxCellI ; ++I )
 	{
 		float minI = (I-0.5f)*parameters.cellSize - posI + 0.5f*parameters.padSeparation ;
 		float maxI = (I+0.5f)*parameters.cellSize - posI - 0.5f*parameters.padSeparation ;
 
-		if ( minI < -parameters.range )
-			minI = -parameters.range ;
-		if ( maxI > parameters.range )
-			maxI = parameters.range ;
-
-		for (int J = -icell ; J <= icell ; J++)
+		for ( int J = minCellJ ; J <= maxCellJ ; ++J )
 		{
 			float minJ = (J-0.5f)*parameters.cellSize - posJ + 0.5f*parameters.padSeparation ;
 			float maxJ = (J+0.5f)*parameters.cellSize - posJ - 0.5f*parameters.padSeparation ;
 
-			if ( minJ < -parameters.range )
-				minJ = -parameters.range ;
-			if ( maxJ > parameters.range )
-				maxJ = parameters.range ;
-
 			float integralResult = computeIntegral(minI , maxI , minJ , maxJ) ;
 
-			chargeMap[I_J_Coordinates(I,J)] += charge * integralResult/normalisation ;
+			chargeMap[I_J_Coordinates(I,J)] += charge * integralResult*normalisation ;
 
 			if( chargeMap[I_J_Coordinates(I,J)] < 0 )
 				streamlog_out( MESSAGE ) << "!!!!!!!!!!Negative Charge!!!!!!!!!!" << std::endl
@@ -57,7 +52,6 @@ void ChargeSpreader::addCharge(float charge, float posI, float posJ , SimDigital
 										 << " Y " << posI << " " << minI << " " << maxI << std::endl ;
 
 			chargeTotCheck += chargeMap[I_J_Coordinates(I,J)] ;
-
 		}
 	}
 	streamlog_out( DEBUG ) << " Charge = " << charge << " ; total splitted charge = " << chargeTotCheck << std::endl ;
@@ -76,12 +70,14 @@ void GaussianSpreader::init()
 {
 	assert ( parameters.erfWidth.size() == parameters.erfWeigth.size() ) ;
 
-	normalisation = 0 ;
+	float _normalisation = 0 ;
 	for ( unsigned int i = 0 ; i < parameters.erfWidth.size() ; i++ )
 	{
 		streamlog_out( DEBUG ) << "Erf function parameters " << i+1 << " : " << parameters.erfWidth[i] << ", " << parameters.erfWeigth[i] << std::endl ;
-		normalisation += parameters.erfWeigth.at(i) * parameters.erfWidth.at(i) * parameters.erfWidth.at(i) * M_PI ;
+		_normalisation += parameters.erfWeigth.at(i) * parameters.erfWidth.at(i) * parameters.erfWidth.at(i) * M_PI ;
 	}
+
+	normalisation = 1.f/_normalisation ;
 
 	streamlog_out( DEBUG ) << "Charge splitter normalisation factor: " << normalisation << std::endl;
 	streamlog_out( DEBUG ) << "range : " << parameters.range << " ; padseparation : " << parameters.padSeparation << std::endl;
@@ -112,7 +108,8 @@ ExactSpreader::~ExactSpreader()
 
 void ExactSpreader::init()
 {
-	normalisation = static_cast<float>( 2*M_PI ) ;
+	float _normalisation = static_cast<float>( 2*M_PI ) ;
+	normalisation = 1.0f/_normalisation ;
 
 	streamlog_out( DEBUG ) << "Charge splitter normalisation factor: " << normalisation << std::endl ;
 	streamlog_out( DEBUG ) << "range : " << parameters.range << " ; padseparation : " << parameters.padSeparation << std::endl ;

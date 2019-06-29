@@ -28,8 +28,8 @@ ENDIF()
 
 # project version
 SET( ${PROJECT_NAME}_VERSION_MAJOR 1 )
-SET( ${PROJECT_NAME}_VERSION_MINOR 19 )
-SET( ${PROJECT_NAME}_VERSION_PATCH 1 )
+SET( ${PROJECT_NAME}_VERSION_MINOR 25 )
+SET( ${PROJECT_NAME}_VERSION_PATCH 0 )
 
 
 
@@ -59,6 +59,8 @@ IF( MARLINRECO_AIDA )
     ENDIF()
 ENDIF()
 
+SET( ROOT_DEFINITIONS "-DUSEROOT -DUSE_ROOT -DMARLIN_USE_ROOT" )
+
 FOREACH( pkg Marlin MarlinUtil MarlinKinfit MarlinTrk GSL AIDA ROOT )
     IF( ${pkg}_FOUND )
         INCLUDE_DIRECTORIES( SYSTEM ${${pkg}_INCLUDE_DIRS} )
@@ -80,7 +82,7 @@ IF( MARLINRECO_FORTRAN )
 
     FIND_PACKAGE( FORTRAN_LIBRARY REQUIRED )
     LINK_LIBRARIES( ${FORTRAN_LIBRARY} )
-    GET_FILENAME_COMPONENT( FORTRAN_LIBRARY_FULL_PATH ${FORTRAN_LIBRARY} REALPATH ) 
+    GET_FILENAME_COMPONENT( FORTRAN_LIBRARY_FULL_PATH ${FORTRAN_LIBRARY} REALPATH )
     INSTALL( PROGRAMS ${FORTRAN_LIBRARY_FULL_PATH} DESTINATION lib ) # PROGRAMS is like FILES but sets executable permissions
 
 
@@ -114,14 +116,12 @@ ENDIF()
 ### LIBRARY ##################################################################
 
 MACRO( ADD_MARLINRECO_PKG _input_dir )
-	MESSAGE( STATUS "Including MarlinReco package: ${_input_dir}" )
-	INCLUDE_DIRECTORIES( BEFORE ${_input_dir}/include )
-	AUX_SOURCE_DIRECTORY( ${_input_dir}/src MarlinReco_cxx_srcs )
-	#INSTALL_DIRECTORY( "${_input_dir}/include" DESTINATION . FILES_MATCHING PATTERN "*.h" )
-	#INSTALL_DIRECTORY( ${_input_dir}/include/ DESTINATION include/marlinreco FILES_MATCHING PATTERN "*.h" )
+    MESSAGE( STATUS "Including MarlinReco package: ${_input_dir}" )
+    INCLUDE_DIRECTORIES( BEFORE ${_input_dir}/include )
+    AUX_SOURCE_DIRECTORY( ${_input_dir}/src MarlinReco_cxx_srcs )
+    #INSTALL_DIRECTORY( "${_input_dir}/include" DESTINATION . FILES_MATCHING PATTERN "*.h" )
+    #INSTALL_DIRECTORY( ${_input_dir}/include/ DESTINATION include/marlinreco FILES_MATCHING PATTERN "*.h" )
 ENDMACRO()
-
-
 
 ADD_MARLINRECO_PKG( ./Analysis/AddClusterProperties )
 ADD_MARLINRECO_PKG( ./Analysis/GammaGammaCandidateTruthFilter )
@@ -140,6 +140,9 @@ ADD_MARLINRECO_PKG( ./Analysis/TruthVertexFinder )
 ADD_MARLINRECO_PKG( ./Analysis/TrackToRecoParticle )
 ADD_MARLINRECO_PKG( ./Analysis/ZFinder )
 ADD_MARLINRECO_PKG( ./Analysis/CLICPfoSelector )
+ADD_MARLINRECO_PKG( ./Analysis/EventShapes )
+ADD_MARLINRECO_PKG( ./Analysis/TJjetsPFOAnalysisProcessor )
+ADD_MARLINRECO_PKG( ./Analysis/GammaGammaHadronRemoval )
 
 ADD_MARLINRECO_PKG( ./Calibration/AbsCalibration )
 ADD_MARLINRECO_PKG( ./CaloDigi/LDCCaloDigi )
@@ -154,6 +157,7 @@ ADD_MARLINRECO_PKG( ./Tracking/KinkFinder )
 ADD_MARLINRECO_PKG( ./Tracking/V0Finder )
 ADD_MARLINRECO_PKG( ./Analysis/FourMomentumCovMat )
 ADD_MARLINRECO_PKG( ./PFOID )
+ADD_MARLINRECO_PKG( ./TimeOfFlight )
 
 IF( DD4hep_FOUND )
   # if(DD4HEP_USE_XERCESC)
@@ -164,15 +168,15 @@ IF( DD4hep_FOUND )
   LINK_LIBRARIES( ${DD4hep_LIBRARIES} ${DD4hep_COMPONENT_LIBRARIES} )
   ADD_MARLINRECO_PKG( ./CaloDigi/Realistic )
   ADD_MARLINRECO_PKG( ./CaloDigi/SDHCALDigi )
-  	IF( MarlinTrk_FOUND )
-	ADD_MARLINRECO_PKG( ./Analysis/SiPID )
+  IF( MarlinTrk_FOUND )
+    ADD_MARLINRECO_PKG( ./Analysis/SiPID )
   ENDIF()
 ENDIF()
 
 IF( MARLINRECO_FORTRAN )
     ADD_MARLINRECO_PKG( ./Analysis/BCalTagEfficiency )
-    ADD_MARLINRECO_PKG( ./Analysis/EventShapes )
     ADD_MARLINRECO_PKG( ./Analysis/SatoruJetFinder )
+    ADD_MARLINRECO_PKG( ./Analysis/EventShapes_Fortran )
     FILE( GLOB SatoruJetFinder_f77_srcs ./Analysis/SatoruJetFinder/src/fortsrc/*.f )
     LIST( APPEND MarlinReco_f77_srcs ./Analysis/BCalTagEfficiency/Fortran/track-to-bcal.F )
     LIST( APPEND MarlinReco_f77_srcs ${SatoruJetFinder_f77_srcs} )
@@ -205,3 +209,13 @@ INSTALL_SHARED_LIBRARY( MarlinReco DESTINATION lib )
 # display some variables and write them to cache
 DISPLAY_STD_VARIABLES()
 
+
+### Load cpp format and check tools #######################################
+
+# Set the source files to clang-format (FIXME: determine this better)
+FILE(GLOB_RECURSE
+     CHECK_CXX_SOURCE_FILES
+        Analysis/IsolatedLeptonFinder/src/*.cc Analysis/IsolatedLeptonFinder/include/*.h
+        Analysis/CLICPfoSelector/src/*.cc Analysis/CLICPfoSelector/include/*.h
+     )
+INCLUDE("cmake/clang-cpp-checks.cmake")

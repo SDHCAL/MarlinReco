@@ -1,3 +1,171 @@
+# v01-25
+
+* 2018-07-05 Jakob Beyer ([PR#52](https://github.com/ilcsoft/MarlinReco/pull/52))
+  - Adding new analysis toolTJjetsPFOAnalysisProcessor: 
+        - Combined the PFOAnalysis processor with the jet analysis power of the TrueJet/TrueJet_Parser tools to gain insight into individual jet behaviour and reconstruction.
+
+* 2018-08-06 Erica Brondolin ([PR#54](https://github.com/ilcsoft/MarlinReco/pull/54))
+  - Introduce CLICPfoSelectorAnalysis which runs on the PFO input collection and creates: a TTree with the PFO variables used in the CLICPfoSelector, cluster time vs pT graphs for each particle category and region, and PFO energy sum histos for each particle category and region
+  - CLICPfoSelectorAnalysis has the possibility to detect if the PFO belongs to signal/overlay
+  - CLICPfoSelectorAnalysis has the possibility to check if the track and the cluster belonging to the same PFO were produced by at least one common MCParticle
+
+* 2018-07-18 Junping Tian ([PR#53](https://github.com/ilcsoft/MarlinReco/pull/53))
+  - fixed IsolatedLeptonTagger
+        - fixed the problem about track impact parameters in the new samples where interaction point is     smeared
+        - some minor updates about pre-cut values and symmetric treatment for d0/z0 significance
+        - new weights trained for new samples are provided
+
+# v01-24-01
+
+* 2018-04-18 Ete Remi ([PR#51](https://github.com/ilcsoft/MarlinReco/pull/51))
+  - RecoMCThruthLinker processor
+      - Turned WARNING message to DEBUG9 to avoid log pollution
+      - this warning occurs only for the SDHcal case where one SimCalorimeterHit can create more than CalorimeterHit
+
+# v01-24
+
+* 2018-04-10 Guillaume ([PR#48](https://github.com/ilcsoft/MarlinReco/pull/48))
+  - SDHCAL digitizer : 
+     - Switch order of the LCRelation collection between SDHCAL SimCalorimeterHits and Digitized CalorimeterHits (now from CalorimeterHit to SimCalorimeterHit)
+
+* 2018-04-18 Carl Mikael Berggren ([PR#50](https://github.com/ilcsoft/MarlinReco/pull/50))
+  - improved TrueJet processor:
+       - Fixed crash due to index out-of-range
+       - Remove all compiler warnings except local shadow (cheked to be OK)
+       -  id of initial ColourNeutrals fixed (should be a boson (W,Z,H))
+       - MCParticle collection does not need to start with the beam-particles, back-tracking now also
+  gracefully stops if the first entry is reached. This should allow for usage also for the DBD-250 samples, in which the initial beam-particles are missing in the MCParticle collections.
+       - nitty-gritty special cases in history fixed.
+       - Now also works for higgs-samples *except for h->gluon gluon*, which will need a completely different treatment fro back-track through the parton shower, as there is no quark-line to follow...
+
+* 2018-04-17 Frank Gaede ([PR#49](https://github.com/ilcsoft/MarlinReco/pull/49))
+  - add new package TimeOfFlight
+       - use TOFEstimators processor to compute TOF parameters
+       - will be added as PID object to the ReconstructedParticles
+
+# v01-23
+
+* 2018-01-31 Strahinja Lukic ([PR#37](https://github.com/iLCSoft/MarlinReco/pull/37))
+  Updates of SiTracker_dEdxProcessor:
+  
+  - Cleaned up unnecessary code.
+  - Added runtime protection against failure of `TrackImpl::getTrackState()`.
+  - Replaced `MarlinTrk::IMarlinTrack::propagate()` which was making the processor ~1000X slower than necessary with `MarlinTrk::IMarlinTrack::extrapolate()`.
+  - Removed unnecessary parameters.
+  
+  Updates of AnalyseSidEdxProcessor:
+  
+  -   Added minor runtime protections.
+
+* 2018-01-09 Strahinja Lukic ([PR#35](https://github.com/iLCSoft/MarlinReco/pull/35))
+  - `SiTracker_dEdxProcessor` was adapted to determine the barrel/endcap type of tracker detector by checking the layering extension, rather than the type flag as before. 
+  - A bug was corrected in `SiTracker_dEdxProcessor` that caused miscalculation of total sensor thickness for some of the available dEdx estimators.
+
+* 2018-02-25 KURATA Masakazu ([PR#42](https://github.com/iLCSoft/MarlinReco/pull/42))
+  - Focus on low momentum mu/pi separation
+  - Correct the corresponding change for createPDF processor
+   
+  - update: correct bad lines:
+    1. use DD4hepAPI to get b field
+    2. correct array initialization
+    3. prevent memory leak when using ROOT
+
+* 2018-02-25 KURATA Masakazu ([PR#42](https://github.com/iLCSoft/MarlinReco/pull/42))
+  - Thank you for writing the text to appear in the release notes. It will show up
+    exactly as it appears between the two bold lines
+  - ...
+
+* 2018-02-08 Daniel Jeans ([PR#38](https://github.com/iLCSoft/MarlinReco/pull/38))
+  - Change order of hit relations: now from reco/digi -> sim [to be consistent with past practice and all other processors]
+  - Add to/from type info to the relation collections
+  - Fix warnings from the compiler
+
+* 2018-02-08 Andreas Alexander Maier ([PR#33](https://github.com/iLCSoft/MarlinReco/pull/33))
+  - This package is an extension to the IsolatedLeptonFinderProcessor. The default functionality is untouched.
+    - Optionally, it dresses leptons with close-by particles. By default it dresses electrons and muons with photons.
+    - The algorithm starts with the highest energy lepton and adds all photons (and, optionally, electrons) in a cone of a given size around to it. As the original, it creates a collection with the dressed leptons and another collections with all remaining particles, except the ones that were dressed into the leptons.
+    - All compiler warnings are fixed
+
+* 2018-03-13 Frank Gaede ([PR#43](https://github.com/iLCSoft/MarlinReco/pull/43))
+  -  Fix for iLCSoft/LCIO#35
+
+* 2018-03-28 Frank Gaede ([PR#46](https://github.com/iLCSoft/MarlinReco/pull/46))
+  - Fix for the removal of DDSurfaces which have been merged into DDRec 
+    -  includes from `DDSurfaces` -> `DDRec`
+    - namespace `DDSurfaces` -> `dd4hep::rec`
+
+* 2017-12-12 Frank Gaede ([PR#34](https://github.com/iLCSoft/MarlinReco/pull/34))
+  - Remove all warnings of type "should be initialized in the member initialization list [-Weffc++]"
+  - Remove all warnings of type "unused parameter 'run'" for processRunHeader( LCRunHeader*  /*run*/)
+  - Remove all warnings of type "unused parameter 'evt'" for "check( LCEvent *  /*evt*/ )"
+
+* 2018-03-23 Ulrich Einhaus ([PR#44](https://github.com/iLCSoft/MarlinReco/pull/44))
+  - Compute_dEdXProcessor:
+    - geometry issue: gear to DD4hep unit adaption, fixed low momentum problem
+    - added dx calculation strategies
+    - added various processor options, default are all old version
+    - added documentation
+
+# v01-22
+
+* 2017-11-15 Ete Remi ([PR#30](https://github.com/ilcsoft/MarlinReco/pull/30))
+  - New SDHCAL digitizer version from Lyon group (ggarillot)
+    - step linking and 'Angular Correction' 
+    - two processors, one for applying the threshold, one for the threshold energy factors
+
+* 2017-11-15 Shaojun Lu ([PR#29](https://github.com/ilcsoft/MarlinReco/pull/29))
+  - replace gear with DD4hep in FourMomentumCovMat and PIDTools
+        - use DD4hep for accessing BField and LayeredCalorimeterData extension to replace Gear.
+         - with this the ILD standard reconstruction does no longer need a  gear file
+
+# v01-21-01
+
+* 2017-11-10 Ete Remi ([PR#28](https://github.com/iLCSoft/MarlinReco/pull/28))
+  - Missing memory allocation and delete for random engine
+  - Added delete specification for copy constructor and assignment operator to avoid warning on compilation
+  - Missing delete for two arrays causing memory leaks
+
+# v01-21
+
+* 2017-10-26 KURATA Masakazu ([PR#26](https://github.com/ilcsoft/MarlinReco/pull/26))
+  - improved PIDTools
+        - added additional smearing functon for dE/dx resolution.
+        - and corrected the strange behavior for PID. That is most of the muons are identified as pions.
+
+# v01-20
+
+* 2017-07-20 Andre Sailer ([PR#17](https://github.com/iLCSoft/MarlinReco/pull/17))
+  - TauFinder: fix memory leak (few kB/event)
+
+* 2017-09-13 Frank Gaede ([PR#22](https://github.com/iLCSoft/MarlinReco/pull/22))
+  - add a default value for parameter inputHitCollections in RealisticCaloDigi.cc
+  - create package EventShapes_Fortran, Fixes #20 
+         - moved YThres from EventShapes to EventShapes_Fortran
+  - build EventShapes for C++ now
+
+* 2017-09-27 libo929 ([PR#24](https://github.com/iLCSoft/MarlinReco/pull/24))
+  - improve SDHCALDigi/src/SimDigital.cc
+       - Fixed the exception of unknown name y
+        - add optional parameter HCALCellSize to overwrite the one from dd4hep
+
+* 2017-07-29 libo929 ([PR#18](https://github.com/iLCSoft/MarlinReco/pull/18))
+  - Updated the SimDigital processor to make it compatible with lcgeo simulation
+  - Removed the digitization for ECAL 
+  - Fixed the warnings
+
+* 2017-08-14 Ete Remi ([PR#19](https://github.com/iLCSoft/MarlinReco/pull/19))
+  - BruteForceEcalGapFiller : Add missing information on calo hit type
+
+* 2017-09-15 Daniel Jeans ([PR#23](https://github.com/iLCSoft/MarlinReco/pull/23))
+  - modify algorithm to fill ECAL gaps in BruteForceEcalGapFiller:
+        - overall linear suppression gap hit energies [as was done in DBD]
+        - additional logarithmic suppression to reduce large energy gap hits
+        - separate parameters for (a) gaps between modules, and (b) gaps within modules
+        - default values of new parameters seem reasonable for ILD_l4_v02 model
+
+* 2017-10-06 Andre Sailer ([PR#25](https://github.com/iLCSoft/MarlinReco/pull/25))
+  - Drop unused and no longer existing header includes AidaSoft/DD4hep#241
+
 # v01-19-01
 
 * 2017-07-04 Daniel Jeans ([PR#16](https://github.com/iLCSoft/MarlinReco/pull/16))

@@ -30,12 +30,12 @@ public:
   /** Called for every run.
    */
   virtual void processRunHeader( LCRunHeader* run ) ;
-  virtual void modifyRunHeader( LCRunHeader* run ) {}
+  virtual void modifyRunHeader( LCRunHeader* /*run*/ ) {}
   
   /** Called for every event - the working horse.
    */
   virtual void processEvent( LCEvent * evt ) ; 
-  virtual void modifyEvent( LCEvent * evt ) {} 
+  virtual void modifyEvent( LCEvent * /*evt*/ ) {}
   
  
   
@@ -49,9 +49,9 @@ protected:
   /** Input and output collection name.
    */
 
-  std::string  _inputCollectionName ;
-  std::string _outputCollectionName ;
-  float _minimumMomentum;
+  std::string  _inputCollectionName{};
+  std::string _outputCollectionName{};
+  float _minimumMomentum{};
 
 } ;
 

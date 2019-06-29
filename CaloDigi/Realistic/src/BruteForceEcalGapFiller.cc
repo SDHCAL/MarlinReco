@@ -65,6 +65,27 @@ BruteForceEcalGapFiller::BruteForceEcalGapFiller( )  : Processor( "BruteForceEca
 			     _interModuleDist,
 			     float (7.)
 			     );
+
+  registerProcessorParameter("interModuleNonlinearFactor",
+			     "nonlin factor f: E_corr = interModuleCorrectionFactor*(1/f)*log(1 + f*E_calc)",
+			     _interModuleNonlinearFactor,
+			     float (1.) );
+
+  registerProcessorParameter("intraModuleNonlinearFactor",
+			     "nonlin factor f: E_corr = intraModuleCorrectionFactor*(1/f)*log(1 + f*E_calc)",
+			     _intraModuleNonlinearFactor,
+			     float (1.) );
+
+  registerProcessorParameter("interModuleCorrectionFactor",
+			     "factor applied to calculated energy of inter-module gap hits",
+			     _interModuleFactor,
+			     float (0.35) );
+
+  registerProcessorParameter("intraModuleCorrectionFactor",
+			     "factor applied to calculated energy of intra-module gap hits",
+			     _intraModuleFactor,
+			     float (1.0) );
+
 }
 
 
@@ -268,10 +289,14 @@ void BruteForceEcalGapFiller::addIntraModuleGapHits( LCCollectionVec* newcol ) {
 		  position[k] = 0.5*(theseHits[ih]->getPosition()[k] + theseHits[jh]->getPosition()[k]);
 		float extraEnergy = enFrac*(theseHits[ih]->getEnergy() + theseHits[jh]->getEnergy())/2.;
 		float mintime = std::min( theseHits[ih]->getTime(), theseHits[jh]->getTime() );
+		CHT::CaloType cht_type = CHT::em;
+		CHT::CaloID   cht_id   = CHT::ecal;
+		CHT::Layout   cht_lay  = (_currentLayout == ECALBARREL) ? CHT::barrel : (_currentLayout == ECALENDCAP) ? CHT::endcap : CHT::any;
 		CalorimeterHitImpl* newGapHit = new CalorimeterHitImpl();
-		newGapHit->setEnergy( extraEnergy );
+		newGapHit->setEnergy( _intraModuleFactor* std::log ( 1 + _intraModuleNonlinearFactor*extraEnergy )/_intraModuleNonlinearFactor );
 		newGapHit->setPosition( position );
 		newGapHit->setTime( mintime );
+		newGapHit->setType( CHT( cht_type , cht_id , cht_lay , il) );
 		newcol->addElement( newGapHit );
 	      } // if gap
 	    } // jh
@@ -355,17 +380,21 @@ void BruteForceEcalGapFiller::addInterModuleGapHits( LCCollectionVec* newcol ) {
 	      }
 	      if ( gap ) {
 
-		streamlog_out ( DEBUG1 ) << " addIntraModuleGapHits: found gap " << dist1d[0] << " " << dist1d[1] << " " << dist1d[2]<< endl;
+		streamlog_out ( DEBUG1 ) << " addInterModuleGapHits: found gap " << dist1d[0] << " " << dist1d[1] << " " << dist1d[2]<< endl;
 
 		float position[3]={0.};
 		for (int k=0; k<3; k++)
 		  position[k] = 0.5*(theseHits[ih]->getPosition()[k] + nextHits[jh]->getPosition()[k]);
 		float extraEnergy = enFrac*(theseHits[ih]->getEnergy() + nextHits[jh]->getEnergy())/2.;
 		float mintime = std::min( theseHits[ih]->getTime(), nextHits[jh]->getTime() );
+		CHT::CaloType cht_type = CHT::em;
+		CHT::CaloID   cht_id   = CHT::ecal;
+		CHT::Layout   cht_lay  = (_currentLayout == ECALBARREL) ? CHT::barrel : (_currentLayout == ECALENDCAP) ? CHT::endcap : CHT::any;
 		CalorimeterHitImpl* newGapHit = new CalorimeterHitImpl();
-		newGapHit->setEnergy( extraEnergy );
+		newGapHit->setEnergy( _interModuleFactor* std::log ( 1 + _interModuleNonlinearFactor*extraEnergy )/_interModuleNonlinearFactor );
 		newGapHit->setPosition( position );
 		newGapHit->setTime( mintime );
+		newGapHit->setType( CHT( cht_type , cht_id , cht_lay , il) );
 		newcol->addElement( newGapHit );
 	      } // if gap
 	    } // jh
@@ -374,9 +403,9 @@ void BruteForceEcalGapFiller::addInterModuleGapHits( LCCollectionVec* newcol ) {
       } // im
     } // is
   } // ilayer
-  
-  streamlog_out ( DEBUG1 ) << " done addInterModuleGapHits " << newcol->getNumberOfElements() << endl;
 
+  streamlog_out ( DEBUG1 ) << " done addInterModuleGapHits " << newcol->getNumberOfElements() << endl;
+  
   return;
 }
 

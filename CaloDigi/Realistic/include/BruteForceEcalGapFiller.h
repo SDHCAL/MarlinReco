@@ -26,9 +26,9 @@ class BruteForceEcalGapFiller : public Processor {
 
   BruteForceEcalGapFiller( ) ;
   virtual void init() ;
-  virtual void processRunHeader( LCRunHeader* run ) {}
+  virtual void processRunHeader( LCRunHeader* /*run*/ ) {}
   virtual void processEvent( LCEvent * evt ) ;
-  virtual void check( LCEvent * evt ) {}
+  virtual void check( LCEvent * /*evt*/ ) {}
   virtual void end() ;
 
  protected:
@@ -36,22 +36,29 @@ class BruteForceEcalGapFiller : public Processor {
   enum {MAXMODULE=10, MAXSTAVE=15, MAXLAYER=50};
   std::vector < CalorimeterHit* > hitsByLayerModuleStave[MAXLAYER][MAXSTAVE][MAXMODULE];
 
-  std::string _inputHitCollection;
-  std::string _outputHitCollection;
+  std::string _inputHitCollection{};
+  std::string _outputHitCollection{};
 
-  std::string _cellIDLayerString;
-  std::string _cellIDModuleString;
-  std::string _cellIDStaveString;
+  std::string _cellIDLayerString{};
+  std::string _cellIDModuleString{};
+  std::string _cellIDStaveString{};
 
-  LCFlagImpl _flag;
+
+  float _interModuleNonlinearFactor{};
+  float _intraModuleNonlinearFactor{};
+
+  float _interModuleFactor{};
+  float _intraModuleFactor{};
+
+  LCFlagImpl _flag{};
 
   enum {ECALENDCAP, ECALBARREL};
 
-  int _currentLayout;
+  int _currentLayout{};
 
-  float _interModuleDist;
+  float _interModuleDist{};
 
-  dd4hep::rec::LayeredCalorimeterData* _caloGeomData;
+  dd4hep::rec::LayeredCalorimeterData* _caloGeomData{};
 
   void getGeometryData(const int ihitType);
 

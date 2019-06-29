@@ -12,6 +12,7 @@
 #include <UTIL/LCTypedVector.h>
 #include <EVENT/Track.h>
 #include <marlin/Exceptions.h>
+#include <EVENT/Vertex.h>
 
 // ----- include for verbosity dependend logging ---------
 #include "marlin/VerbosityLevels.h"
@@ -46,6 +47,12 @@ IsolatedLeptonTaggingProcessor::IsolatedLeptonTaggingProcessor() : Processor("Is
 			   "Name of the PandoraPFOs collection"  ,
 			   _colPFOs ,
 			   std::string("PandoraPFOs") ) ;
+
+  registerInputCollection( LCIO::VERTEX,
+			   "InputPrimaryVertexCollection" , 
+			   "Name of the Primary Vertex collection"  ,
+			   _colPVtx ,
+			   std::string("PrimaryVertex") ) ;
 
   registerOutputCollection( LCIO::RECONSTRUCTEDPARTICLE, 
 			    "OutputPFOsWithoutIsoLepCollection",
@@ -148,6 +155,16 @@ IsolatedLeptonTaggingProcessor::IsolatedLeptonTaggingProcessor() : Processor("Is
 			     "cosine of the larger cone"  ,
 			     _cosConeLarge ,
 			     float(0.95) ) ;
+
+  registerProcessorParameter("UseYokeForMuonID",
+			     "use yoke for muon ID"  ,
+			     _use_yoke_for_muon ,
+			     bool(false) ) ;
+
+  registerProcessorParameter("UseIP",
+			     "use impact parameters"  ,
+			     _use_ip ,
+			     bool(true) );
 }
 
 void IsolatedLeptonTaggingProcessor::init() { 
@@ -171,8 +188,10 @@ void IsolatedLeptonTaggingProcessor::init() {
       reader->AddVariable( "energyratio",     &_energyratio ); // energy ration of lep and large cone
       reader->AddVariable( "ratioecal",       &_ratioecal ); // ratio of energy in ecal over energy in ecal+hcal
       reader->AddVariable( "ratiototcal",     &_ratiototcal ); // ratio of energy in ecal+hcal over momentum
-      reader->AddVariable( "nsigd0",          &_nsigd0 ); // significance of d0
-      reader->AddVariable( "nsigz0",          &_nsigz0 ); // significance of z0
+      if (_use_ip) {
+	reader->AddVariable( "nsigd0",          &_nsigd0 ); // significance of d0
+	reader->AddVariable( "nsigz0",          &_nsigz0 ); // significance of z0
+      }
     }
     else { // muon
       reader->AddVariable( "coneec",          &_coneec );
@@ -180,9 +199,11 @@ void IsolatedLeptonTaggingProcessor::init() {
       reader->AddVariable( "momentum",        &_momentum );
       reader->AddVariable( "coslarcon",       &_coslarcon );
       reader->AddVariable( "energyratio",     &_energyratio );
-      reader->AddVariable( "yokeenergy",      &_yokeenergy ); // energy in yoke
-      reader->AddVariable( "nsigd0",          &_nsigd0 );
-      reader->AddVariable( "nsigz0",          &_nsigz0 );
+      if (_use_yoke_for_muon) reader->AddVariable( "yokeenergy",      &_yokeenergy ); // energy in yoke
+      if (_use_ip) {
+	reader->AddVariable( "nsigd0",          &_nsigd0 );
+	reader->AddVariable( "nsigz0",          &_nsigz0 );
+      }
       reader->AddVariable( "totalcalenergy",  &_totalcalenergy );
     }
     
@@ -198,7 +219,7 @@ void IsolatedLeptonTaggingProcessor::init() {
   
 }
 
-void IsolatedLeptonTaggingProcessor::processRunHeader( LCRunHeader* run) { 
+void IsolatedLeptonTaggingProcessor::processRunHeader( LCRunHeader*  /*run*/) { 
 } 
 
 void IsolatedLeptonTaggingProcessor::processEvent( LCEvent * evt ) { 
@@ -206,12 +227,32 @@ void IsolatedLeptonTaggingProcessor::processEvent( LCEvent * evt ) {
     
   streamlog_out(DEBUG) << "Hello, Isolated Lepton Tagging!" << endl;
 
-  // -- get PFO collection --
-  LCCollection *colPFO = evt->getCollection(_colPFOs);
-  if (!colPFO) {
-    std::cerr << "No PFO Collection Found!" << std::endl;
-    throw marlin::SkipEventException(this);
+  // -- get Primary Vertex collection --
+  // primary vertex from VertexFinder (LCFIPlus)
+  LCCollection *colPVtx = nullptr;
+  try {
+    colPVtx = evt->getCollection(_colPVtx);
+    if(colPVtx->getNumberOfElements() == 0) {
+      std::cerr << "Vertex collection (" << _colPVtx << ") is empty !" << std::endl;
+      return;
+    }
   }
+  catch(DataNotAvailableException &e) {
+    std::cerr << "No Vertex collection found (" << _colPVtx << ") !" << std::endl;
+    return;
+  }
+  Vertex *pvtx = dynamic_cast<Vertex*>(colPVtx->getElementAt(0));
+  Double_t z_pvtx = pvtx->getPosition()[2];
+  // -- get PFO collection --
+  LCCollection *colPFO = nullptr;
+  try {
+    colPFO = evt->getCollection(_colPFOs);
+  }
+  catch(DataNotAvailableException &e) {
+    std::cerr << "No PFO collection found (" << _colPFOs << ") !" << std::endl;
+    return;
+  }
+
   Int_t nPFOs = colPFO->getNumberOfElements();
   std::vector<lcio::ReconstructedParticle*> newPFOs;
   std::vector<lcio::ReconstructedParticle*> isoLeptons;
@@ -232,6 +273,7 @@ void IsolatedLeptonTaggingProcessor::processEvent( LCEvent * evt ) {
     if (ntracks > 0) {
       d0 = tckvec[0]->getD0();
       z0 = tckvec[0]->getZ0();
+      z0 -= z_pvtx;   // substract z of primary vertex
       deltad0 = TMath::Sqrt(tckvec[0]->getCovMatrix()[0]);
       deltaz0 = TMath::Sqrt(tckvec[0]->getCovMatrix()[9]);
       nsigd0 = d0/deltad0;
@@ -295,16 +337,20 @@ void IsolatedLeptonTaggingProcessor::processEvent( LCEvent * evt ) {
 	totalCalEnergy/momentumMagnitude < _maxEOverPForElectron &&
 	ecalEnergy/(totalCalEnergy + fEpsilon) > _minEecalOverTotEForElectron && 
 	(momentumMagnitude > _minPForElectron)) { // basic electron ID, should be replaced by external general PID
-      if (nsigd0 < _maxD0SigForElectron && nsigz0 < _maxZ0SigForElectron) {   // contraint to primary vertex
+      if (TMath::Abs(nsigd0) < _maxD0SigForElectron && TMath::Abs(nsigz0) < _maxZ0SigForElectron) {   // contraint to primary vertex
 	mva_electron = _readers[0]->EvaluateMVA( "MLP method"           );
       }
     }
     if (charge != 0 && 
 	totalCalEnergy/momentumMagnitude < _maxEOverPForMuon && 
-	yokeEnergy > _minEyokeForMuon && 
 	(momentumMagnitude > _minPForMuon)) { // basic muon ID, should be replaced by external general PID
-      if (nsigd0 < _maxD0SigForMuon && nsigz0 < _maxZ0SigForMuon) {  // contraint to primary vertex
-	mva_muon = _readers[1]->EvaluateMVA( "MLP method"           );
+      if (TMath::Abs(nsigd0) < _maxD0SigForMuon && TMath::Abs(nsigz0) < _maxZ0SigForMuon) {  // contraint to primary vertex
+	if (_use_yoke_for_muon && yokeEnergy > _minEyokeForMuon) {
+	  mva_muon = _readers[1]->EvaluateMVA( "MLP method"           );
+	}
+	else {   // temporarily, provide this option for muon ID without using energy in Yoke; default option for now before problems get fixed
+	  mva_muon = _readers[1]->EvaluateMVA( "MLP method"           );
+	}
       }
     }
     // use output tagging for isolation requirement
@@ -342,9 +388,6 @@ void IsolatedLeptonTaggingProcessor::processEvent( LCEvent * evt ) {
       }
     }
   }
-  Int_t nleptons = isoLeptons.size();
-
-  //  if (nleptons < 1) throw marlin::SkipEventException(this); // leave it to user for specific application
 
   LCCollectionVec *pPFOsWithoutIsoLepCollection = new LCCollectionVec(LCIO::RECONSTRUCTEDPARTICLE);
   LCCollectionVec *pIsoLepCollection = new LCCollectionVec(LCIO::RECONSTRUCTEDPARTICLE);
@@ -383,7 +426,7 @@ void IsolatedLeptonTaggingProcessor::processEvent( LCEvent * evt ) {
 
 
 
-void IsolatedLeptonTaggingProcessor::check( LCEvent * evt ) { 
+void IsolatedLeptonTaggingProcessor::check( LCEvent *  /*evt*/ ) { 
 }
 
 

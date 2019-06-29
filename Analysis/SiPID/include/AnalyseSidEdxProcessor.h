@@ -36,6 +36,9 @@ class AnalyseSidEdxProcessor : public Processor {
   virtual Processor*  newProcessor() { return new AnalyseSidEdxProcessor ; }
 
   AnalyseSidEdxProcessor() ;
+  AnalyseSidEdxProcessor(const AnalyseSidEdxProcessor&) = delete ;
+
+  AnalyseSidEdxProcessor& operator=(const AnalyseSidEdxProcessor&) = delete ;
 
   /** Called at the begin of the job before anything is read.
    * Use to initialize the processor, e.g. book histograms.
@@ -60,24 +63,24 @@ class AnalyseSidEdxProcessor : public Processor {
  protected:
 
   /*** Steerable parameters ***/
-  std::string m_rootFileName;
-  std::string m_trackColName;
-  std::string m_linkColName;
-  StringVec m_trkHitCollNames;
+  std::string m_rootFileName{};
+  std::string m_trackColName{};
+  std::string m_linkColName{};
+  StringVec m_trkHitCollNames{};
 
-  TFile* rootfile;
-  TTree* tree;
+  TFile* rootfile{};
+  TTree* tree{};
 
   /** ROOT output **/
-  FloatVec pMC, thetaMC;
-  FloatVec eTrack, dEdxTrack, dEdxError, eEvt;
-  FloatVec vxMag, m; // Vertex vector magnitude and mass of the associated particle
-  FloatVec nTrkHits, nTrkRelatedParticles;
-  FloatVec zTrackHit, xTrackHit, yTrackHit, eTrackHit, typeTrackHit;
-  FloatVec zHit, xHit, yHit, eHit, typeHit;
-  int nTracks;
+  FloatVec pMC{}, thetaMC{};
+  FloatVec eTrack{}, dEdxTrack{}, dEdxError{}, eEvt{};
+  FloatVec vxMag{}, m{}; // Vertex vector magnitude and mass of the associated particle
+  FloatVec nTrkHits{}, nTrkRelatedParticles{};
+  FloatVec zTrackHit{}, xTrackHit{}, yTrackHit{}, eTrackHit{}, typeTrackHit{};
+  FloatVec zHit{}, xHit{}, yHit{}, eHit{}, typeHit{};
+  int nTracks{};
 
-  int lastRunHeaderProcessed;
+  int lastRunHeaderProcessed{};
 } ;
 
 

@@ -44,12 +44,12 @@ public:
   /** Called for every run.
    */
   virtual void processRunHeader( LCRunHeader* run ) ;
-  virtual void modifyRunHeader( LCRunHeader* run ) {}
+  virtual void modifyRunHeader( LCRunHeader* /*run*/ ) {}
   
   /** Called for every event - the working horse.
    */
   virtual void processEvent( LCEvent * evt ) ; 
-  virtual void modifyEvent( LCEvent * evt ) {} 
+  virtual void modifyEvent( LCEvent * /*evt*/ ) {}
   
  
   
@@ -67,20 +67,20 @@ protected:
   /** Input collection name.
    */
 
-  std::string  _inputCollectionName ;
-  int _typeOfThrustFinder;
+  std::string  _inputCollectionName{};
+  int _typeOfThrustFinder{};
 
-  float _principleThrustValue;
-  float _majorThrustValue;
-  float _minorThrustValue;
-  Hep3Vector _principleThrustAxis;
-  Hep3Vector _majorThrustAxis;
-  Hep3Vector _minorThrustAxis;
-  float _min,_max;
-  LCCollection* _inParVec;
-  std::vector<Hep3Vector> _partMom;
-  std::string filename;
-  RanluxEngine myrnd;
+  float _principleThrustValue{};
+  float _majorThrustValue{};
+  float _minorThrustValue{};
+  Hep3Vector _principleThrustAxis{};
+  Hep3Vector _majorThrustAxis{};
+  Hep3Vector _minorThrustAxis{};
+  float _min{},_max{};
+  LCCollection* _inParVec{};
+  std::vector<Hep3Vector> _partMom{};
+  std::string filename{};
+  RanluxEngine myrnd{};
 } ;
 
 #endif

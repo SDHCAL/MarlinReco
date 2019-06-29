@@ -34,11 +34,15 @@ class RealisticCaloReco : virtual public Processor {
   
  public:
   RealisticCaloReco() ;
+  RealisticCaloReco ( const RealisticCaloReco& ) = delete;
+  RealisticCaloReco& operator=(const RealisticCaloReco&) = delete;
+
   virtual void init() ;
   virtual void processRunHeader( LCRunHeader* run ) ;
   virtual void processEvent( LCEvent * evt ) ; 
   virtual void check( LCEvent * evt ) ; 
   virtual void end() ;
+
 
  protected:
 
@@ -46,18 +50,20 @@ class RealisticCaloReco : virtual public Processor {
   virtual float reconstructEnergy(const CalorimeterHit* hit)=0;  // to be overloaded, technology-specific
 
   // parameters
-  std::vector <std::string> _inputHitCollections;
-  std::vector <std::string> _inputRelCollections;
-  std::vector <std::string> _outputHitCollections;
-  std::vector <std::string> _outputRelCollections;
-  std::vector <float> _calibrCoeff;
-  std::vector <int>   _calLayers;
+  std::vector <std::string> _inputHitCollections{};
+  std::vector <std::string> _inputRelCollections{};
+  std::vector <std::string> _outputHitCollections{};
+  std::vector <std::string> _outputRelCollections{};
+  std::vector <float> _calibrCoeff{};
+  std::vector <int>   _calLayers{};
 
-  std::string _cellIDLayerString;
+  std::string _cellIDLayerString{};
 
   // internal variables
-  LCFlagImpl _flag;
-  CellIDDecoder<CalorimeterHit> * _idDecoder;
+  LCFlagImpl _flag{};
+  LCFlagImpl _flag_rel{};
+
+  CellIDDecoder<CalorimeterHit> * _idDecoder{};
 
 } ;
 

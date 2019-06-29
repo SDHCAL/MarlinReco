@@ -1,3 +1,16 @@
+# Note for this branch
+
+The software on this branch seems to be the version to deal with the previous SDHCAL prototype simulation where
+the step information needed for the SDHCAL digitizer was saved in two different collections :
+
+- the SimCalorimeterHit collection with the steps center stored
+- A GenericObject collection with the steps begin and end points stored.
+
+The LCIO format have been evolved to include all the steps information in the SimCalorimeterHit objects.
+This branch should be considered only if one wants to reprocess old simulation files from SDHCAL prototype simulation
+
+
+
 # MarlinReco
 [![Build Status](https://travis-ci.org/iLCSoft/MarlinReco.svg?branch=master)](https://travis-ci.org/iLCSoft/MarlinReco)
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/12363/badge.svg)](https://scan.coverity.com/projects/ilcsoft-marlinreco)

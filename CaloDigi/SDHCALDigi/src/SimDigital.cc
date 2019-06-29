@@ -52,13 +52,6 @@ SimDigital::SimDigital()
 							  _inputCollections ,
 							  hcalCollections) ;
 
-	std::vector<std::string> genCollections = {} ;
-	registerInputCollections( LCIO::LCGENERICOBJECT,
-							  "inputGenericCollections" ,
-							  "Collections of generic objects containing additional step informations (for SDHCAL Proto standalone simulation only)" ,
-							  _inputGenericCollections ,
-							  genCollections) ;
-
 
 	std::vector<std::string> outputHcalCollections = { "HCALBarrelDigi" , "HCALEndcapDigi" , "HCALOtherDigi" } ;
 	registerProcessorParameter( "outputHitCollections",
@@ -190,6 +183,10 @@ SimDigital::SimDigital()
 
 
 
+	registerProcessorParameter( "LinkSteps" ,
+								"Parameter for angle correction",
+								_linkSteps ,
+								false ) ;
 
 
 	registerProcessorParameter( "AngleCorrectionPower" ,
@@ -235,12 +232,6 @@ void SimDigital::init()
 	assert ( _outputRelCollections.size() == _inputCollections.size() ) ;
 	assert ( _encodingType == std::string("LCGEO") || _encodingType == std::string("PROTO") ) ;
 
-	if ( _encodingType == std::string("LCGEO") )
-		assert ( _inputGenericCollections.empty() ) ;
-
-	if ( _inputGenericCollections.size() > 0 )
-		assert ( _inputGenericCollections.size() == _inputCollections.size() ) ;
-
 	//init charge inducer
 	if ( polyaOption == std::string("Uniform") )
 		chargeInducer = new UniformPolya(polyaQbar , polyaTheta) ;
@@ -283,7 +274,7 @@ void SimDigital::init()
 	//book tuples
 	_debugTupleStepFilter  = AIDAProcessor::tupleFactory( this )->create("SimDigitalStepDebug",
 																		 "SimDigital_StepDebug",
-																		 "int filterlevel, float stepTime,deltaI,deltaJ,deltaLayer,minIJdist,charge");
+																		 "int filterlevel, float stepTime,deltaI,deltaJ,deltaLayer,minIJdist,length,charge");
 	streamlog_out(DEBUG) << "Tuple for step debug has been initialized to " << _debugTupleStepFilter << std::endl;
 	streamlog_out(DEBUG) << "it has " << _debugTupleStepFilter->columns() << " columns" <<std::endl;
 
@@ -301,8 +292,12 @@ void SimDigital::init()
 	streamlog_out(DEBUG) << "Tuple for collection stat has been initialized to " << _tupleCollection << std::endl;
 	streamlog_out(DEBUG) << "it has " << _tupleCollection->columns() << " columns" <<std::endl;
 
-	_histoCellCharge = AIDAProcessor::histogramFactory( this )->createHistogram1D("CellCharge","CellCharge",1000000,0,2) ;
+	_histoCellCharge = AIDAProcessor::histogramFactory( this )->createHistogram1D("CellCharge","CellCharge",10000,0,100) ;
 
+	//flags
+	flag.setBit(LCIO::CHBIT_LONG) ;
+	flag.setBit(LCIO::RCHBIT_TIME) ;
+	flagRel.setBit(LCIO::LCREL_WEIGHTED) ;
 }
 
 void SimDigital::removeAdjacentStep(std::vector<StepAndCharge>& vec)
@@ -359,21 +354,12 @@ void SimDigital::fillTupleStep(const std::vector<StepAndCharge>& vec,int level)
 				minDist=dist ;
 		}
 		_debugTupleStepFilter->fill(5,minDist);
-		_debugTupleStepFilter->fill(6,it->charge) ;
+		_debugTupleStepFilter->fill(6,it->stepLength) ;
+		_debugTupleStepFilter->fill(7,it->charge) ;
 		_debugTupleStepFilter->addRow() ;
 	}
 }
 
-void SimDigital::createGenericObjects(LCCollection* col)
-{
-	int numElements = col->getNumberOfElements() ;
-	for (int j = 0 ; j < numElements ; ++j)
-	{
-		LCGenericObject* obj = dynamic_cast<LCGenericObject*>( col->getElementAt(j) ) ;
-		dd4hep::long64 id = obj->getIntVal(0) ; //need to change in future (SDHCALSim only write cellID0 in generic object)
-		geneMap[id].push_back( obj ) ;
-	}
-}
 
 SimDigital::cellIDHitMap SimDigital::createPotentialOutputHits(LCCollection* col, SimDigitalGeomCellId* aGeomCellId)
 {
@@ -386,11 +372,8 @@ SimDigital::cellIDHitMap SimDigital::createPotentialOutputHits(LCCollection* col
 		SimCalorimeterHit* hit = dynamic_cast<SimCalorimeterHit*>( col->getElementAt( j ) ) ;
 
 		std::vector<StepAndCharge> steps ;
-		if ( _inputGenericCollections.empty() )
-			steps = aGeomCellId->decode(hit) ;
-		else
-			steps = aGeomCellId->decode(hit , geneMap) ;
 
+		steps = aGeomCellId->decode(hit , _linkSteps) ;
 
 		fillTupleStep(steps,0) ;
 
@@ -403,12 +386,12 @@ SimDigital::cellIDHitMap SimDigital::createPotentialOutputHits(LCCollection* col
 		steps.erase( remPos , steps.end() ) ;
 		fillTupleStep(steps,1) ;
 
-		if ( !_inputGenericCollections.empty() )
-		{
-			auto stepSmallerThan = [&](const StepAndCharge& v) -> bool { return v.stepLength < stepLengthCut ; } ;
-			remPos = std::remove_if( steps.begin() , steps.end() , stepSmallerThan ) ;
-			steps.erase( remPos , steps.end() ) ;
-		}
+
+		auto stepSmallerThan = [&](const StepAndCharge& v) -> bool { return v.stepLength < stepLengthCut ; } ;
+		remPos = std::remove_if( steps.begin() , steps.end() , stepSmallerThan ) ;
+		steps.erase( remPos , steps.end() ) ;
+
+
 		fillTupleStep(steps,2) ;
 
 		auto absZGreaterThan = [&](const StepAndCharge& v) -> bool { return std::abs( v.step.z() ) > _absZstepFilter ; } ;
@@ -456,6 +439,7 @@ SimDigital::cellIDHitMap SimDigital::createPotentialOutputHits(LCCollection* col
 		for ( const auto& step : steps )
 			time = std::min(time , step.time) ;
 
+
 		for ( const StepAndCharge& itstep : steps )
 			chargeSpreader->addCharge( itstep.charge , static_cast<float>(itstep.step.x()) , static_cast<float>(itstep.step.y()) , aGeomCellId ) ;
 
@@ -473,7 +457,7 @@ SimDigital::cellIDHitMap SimDigital::createPotentialOutputHits(LCCollection* col
 				index = index << 32 ;
 				index += tmp->getCellID0() ;
 
-				if  ( myHitMap.find(index) == myHitMap.end() ) //create hit
+				if ( myHitMap.find(index) == myHitMap.end() ) //create hit
 				{
 					hitMemory& toto = myHitMap[index] ;
 					toto.ahit = std::move(tmp) ;
@@ -544,12 +528,16 @@ void SimDigital::applyThresholds(cellIDHitMap& myHitMap)
 	}
 }
 
-void SimDigital::processCollection(LCCollection* inputCol , LCCollectionVec*& outputCol , LCCollectionVec*& outputRelCol , CHT::Layout layout, LCFlagImpl& flag)
+void SimDigital::processCollection(LCCollection* inputCol , LCCollectionVec*& outputCol , LCCollectionVec*& outputRelCol , CHT::Layout layout)
 {
 	outputCol = new LCCollectionVec(LCIO::CALORIMETERHIT) ;
 	outputRelCol = new LCCollectionVec(LCIO::LCRELATION) ;
 
 	outputCol->setFlag(flag.getFlag()) ;
+
+	outputRelCol->setFlag(flagRel.getFlag()) ;
+	outputRelCol->parameters().setValue("FromType" , LCIO::CALORIMETERHIT ) ;
+	outputRelCol->parameters().setValue("ToType" , LCIO::SIMCALORIMETERHIT ) ;
 
 	SimDigitalGeomCellId* geomCellId = nullptr ;
 
@@ -584,7 +572,7 @@ void SimDigital::processCollection(LCCollection* inputCol , LCCollectionVec*& ou
 
 		//put only one relation with the SimCalorimeterHit which contributes most
 		SimCalorimeterHit* hit = dynamic_cast<SimCalorimeterHit*>( inputCol->getElementAt( currentHitMem.rawHit ) ) ;
-		LCRelationImpl* rel = new LCRelationImpl(hit , caloHit , 1.0) ;
+		LCRelationImpl* rel = new LCRelationImpl(caloHit , hit , 1.0) ;
 		outputRelCol->addElement( rel ) ;
 
 	} //end of loop on myHitMap
@@ -607,15 +595,6 @@ void SimDigital::processEvent( LCEvent* evt )
 	geneMap.clear() ;
 	_hitCharge.clear() ;
 
-
-
-	/////////////////for ECAL---------------------------------------------------
-	// copy the flags from the input collection
-	//GG : it should be checked why we put the flag like this.
-	LCFlagImpl flag ;
-	flag.setBit(LCIO::CHBIT_LONG) ;
-	flag.setBit(LCIO::RCHBIT_TIME);
-
 	for (unsigned int i(0) ; i < _inputCollections.size() ; ++i)
 	{
 		try
@@ -631,14 +610,7 @@ void SimDigital::processEvent( LCEvent* evt )
 			LCCollectionVec* outputCol = nullptr ;
 			LCCollectionVec* outputRelCol = nullptr ;
 
-			LCCollection* genCol = nullptr ;
-			if ( !_inputGenericCollections.empty() )
-			{
-				genCol = evt->getCollection( _inputGenericCollections.at(i) ) ;
-				createGenericObjects( genCol ) ;
-			}
-
-			processCollection(inputCol , outputCol , outputRelCol , layout , flag) ;
+			processCollection(inputCol , outputCol , outputRelCol , layout) ;
 
 			_counters["NReco"] += outputCol->getNumberOfElements() ;
 

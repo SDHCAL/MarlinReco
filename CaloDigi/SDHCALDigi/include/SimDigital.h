@@ -60,10 +60,10 @@ using namespace marlin ;
 struct StepAndCharge
 {
 		StepAndCharge()
-			: step()
+			: step{}
 		{}
-		StepAndCharge(LCVector3D vec , float _time)
-			: step(vec) , time(_time)
+		StepAndCharge(LCVector3D vec , float _length, float _time)
+			: step{vec} , stepLength{_length} , time{_time}
 		{}
 		LCVector3D step ;
 		float charge = 0 ;
@@ -119,7 +119,7 @@ class SimDigital : public Processor
 
 				std::unique_ptr<CalorimeterHitImpl> ahit = nullptr ;
 
-				std::set<int> relatedHits {} ;
+				std::set<int> relatedHits{};
 				float maxEnergydueToHit = -1 ;
 				int rawHit = -1 ;
 
@@ -129,9 +129,8 @@ class SimDigital : public Processor
 
 		typedef std::map<dd4hep::long64, hitMemory> cellIDHitMap ;
 
-		void createGenericObjects(LCCollection* col) ;
 
-		void processCollection(LCCollection* inputCol , LCCollectionVec*& outputCol , LCCollectionVec*& outputRelCol , CHT::Layout layout, LCFlagImpl& flag) ;
+		void processCollection(LCCollection* inputCol , LCCollectionVec*& outputCol , LCCollectionVec*& outputRelCol , CHT::Layout layout) ;
 		cellIDHitMap createPotentialOutputHits(LCCollection* col , SimDigitalGeomCellId* aGeomCellId) ;
 
 		void removeAdjacentStep(std::vector<StepAndCharge>& vec) ;
@@ -139,18 +138,20 @@ class SimDigital : public Processor
 		void removeHitsBelowThreshold(cellIDHitMap& myHitMap , float threshold) ;
 		void applyThresholds(cellIDHitMap& myHitMap) ;
 
-		std::vector<std::string> _inputCollections {} ;
-		std::vector<std::string> _inputGenericCollections {} ;
+		std::vector<std::string> _inputCollections{};
 
-		std::vector<std::string> _outputCollections {} ;
-		std::vector<std::string> _outputRelCollections {} ;
+		std::vector<std::string> _outputCollections{};
+		std::vector<std::string> _outputRelCollections{};
 
-		std::map<std::string, int> _counters {} ;
-		std::vector<float> _thresholdHcal {} ;
+		LCFlagImpl flag {} ;
+		LCFlagImpl flagRel {} ;
 
-		std::vector<double> _hitCharge = {} ;
+		std::map<std::string, int> _counters{};
+		std::vector<float> _thresholdHcal{};
 
-		std::map<dd4hep::long64 , std::vector<LCGenericObject*>> geneMap = {} ;
+		std::vector<double> _hitCharge = {};
+
+		std::map<dd4hep::long64 , std::vector<LCGenericObject*>> geneMap = {};
 
 		float _cellSize = 0 ;
 		float _gasGapWidth = 1.2f ;
@@ -173,6 +174,7 @@ class SimDigital : public Processor
 		double timeCut = std::numeric_limits<double>::max() ;
 		double stepLengthCut = -1.0 ;
 
+		bool _linkSteps = false ;
 		bool _doThresholds = true ;
 
 		std::string efficiencyOption  = "Uniform" ;

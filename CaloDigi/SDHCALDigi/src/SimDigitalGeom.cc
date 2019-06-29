@@ -11,6 +11,8 @@
 #include <DDRec/CellIDPositionConverter.h>
 #include <DD4hep/DetectorSelector.h>
 
+#include <limits>
+
 using namespace lcio ;
 using namespace marlin ;
 
@@ -74,68 +76,92 @@ SimDigitalGeomCellIdPROTO::~SimDigitalGeomCellIdPROTO()
 {
 }
 
-void SimDigitalGeomCellId::createStepAndChargeVec(SimCalorimeterHit* hit , std::vector<StepAndCharge>& vec)
+void SimDigitalGeomCellId::createStepAndChargeVec(SimCalorimeterHit* hit , std::vector<StepAndCharge>& vec, bool link)
 {
-	LCVector3D hitpos ;
+	LCVector3D hitPos ;
 	if (NULL != _hitPosition)
-		hitpos.set(_hitPosition[0],_hitPosition[1],_hitPosition[2]) ;
+		hitPos.set(_hitPosition[0] , _hitPosition[1] , _hitPosition[2]) ;
+
+	std::map< unsigned int , std::vector<StepAndCharge> > stepMap ;
+
+	if ( hit->getNMCContributions() == 0 )
+		return ;
+
+	float currentTime = hit->getTimeCont(0) ;
+	PotentialSameTrackID id(hit->getPDGCont(0) , hit->getParticleCont(0)->getPDG() ) ;
+	unsigned int currentNum = 0 ;
+
 	for (int imcp = 0 ; imcp < hit->getNMCContributions() ; imcp++)
 	{
-		LCVector3D stepposvec;
-		const float* steppos = hit->getStepPosition(imcp) ;
-		if (NULL != steppos)
-			stepposvec.set(steppos[0],steppos[1],steppos[2]) ;
-		if (stepposvec.mag2() != 0)
+		LCVector3D stepPos ;
+		const float* pos = hit->getStepPosition(imcp) ;
+		if (NULL != pos)
 		{
-			stepposvec -= hitpos ;
-			vec.push_back( StepAndCharge(LCVector3D(stepposvec*_Iaxis,stepposvec*_Jaxis,stepposvec*_normal) , hit->getTimeCont(imcp)) );
+			stepPos.set(pos[0],pos[1],pos[2]) ;
+			stepPos -= hitPos ;
+			stepPos = LCVector3D(stepPos*_Iaxis,stepPos*_Jaxis,stepPos*_normal) ;
+
+			PotentialSameTrackID stepID(hit->getPDGCont(imcp) , hit->getParticleCont(imcp)->getPDG() ) ;
+
+			if ( std::abs( stepPos.z() ) < std::numeric_limits<float>::epsilon() ) // step in cell center so I assume it is unique and do not have to be linked
+			{
+				vec.push_back( StepAndCharge( stepPos , hit->getLengthCont(imcp) , hit->getTimeCont(imcp)) ) ;
+				currentNum++ ;
+			}
+			else //put it on the list of steps to be linked
+			{
+				if ( hit->getTimeCont(imcp) >= currentTime && (stepID == id) )
+					stepMap[ currentNum ].push_back( StepAndCharge( stepPos , hit->getLengthCont(imcp) , hit->getTimeCont(imcp)) ) ;
+				else
+				{
+					currentNum++ ;
+					stepMap[ currentNum ].push_back( StepAndCharge( stepPos , hit->getLengthCont(imcp) , hit->getTimeCont(imcp)) ) ;
+				}
+			}
+
+			currentTime = hit->getTimeCont(imcp) ;
+			id.PDGStep = hit->getPDGCont(imcp) ;
+			id.PDGParent = hit->getParticleCont(imcp)->getPDG() ;
 		}
 		else
 			streamlog_out(WARNING) << "DIGITISATION : STEP POSITION IS (0,0,0)" << std::endl;
 	}
 
-	//if no steps have been found, then put one step at the center of the cell :
-	if (vec.size() == 0)
+	if ( link )
 	{
-		streamlog_out(MESSAGE) << "no Steps in hit" << std::endl ;
-		//		vec.push_back(StepAndCharge(LCVector3D(0,0,0))) ;
+		for ( auto& it : stepMap )
+			linkSteps(it.second) ;
 	}
+
+	for ( const auto& it : stepMap )
+		for ( const auto& step : it.second )
+			vec.push_back( step ) ;
+
+	if ( vec.empty() )
+		streamlog_out(MESSAGE) << "no Steps in hit" << std::endl ;
 }
 
-void SimDigitalGeomCellId::createStepAndChargeVec(SimCalorimeterHit* hit , const std::vector<LCGenericObject*>& genericVec , std::vector<StepAndCharge>& vec)
+void SimDigitalGeomCellId::linkSteps(std::vector<StepAndCharge>& vec)
 {
-	if ( static_cast<unsigned>( hit->getNMCContributions() ) != genericVec.size() )
-	{
-		std::cout << "ERROR : Hit collection and Generic collection doesn't match" << std::endl ;
-		throw ;
-	}
+	if ( vec.size() < 2 )
+		return ;
 
-	LCVector3D hitpos ;
-	if (NULL != _hitPosition)
-		hitpos.set(_hitPosition[0],_hitPosition[1],_hitPosition[2]) ;
-	for (int imcp = 0 ; imcp < hit->getNMCContributions() ; imcp++)
-	{
-		LCVector3D stepposvec ;
-		const float* steppos = hit->getStepPosition(imcp) ;
-		if (NULL != steppos)
-			stepposvec.set(steppos[0],steppos[1],steppos[2]) ;
-		if (stepposvec.mag2() != 0)
-		{
-			stepposvec -= hitpos ;
-			StepAndCharge step(LCVector3D(stepposvec*_Iaxis,stepposvec*_Jaxis,stepposvec*_normal) , hit->getTimeCont(imcp)) ;
-			step.stepLength = genericVec.at(imcp)->getFloatVal(6) ;
-			vec.push_back( step ) ;
-		}
-		else
-			streamlog_out(WARNING) << "DIGITISATION : STEP POSITION IS (0,0,0)" << std::endl;
-	}
+	float time = std::numeric_limits<float>::max() ;
+	float totalLength = 0 ;
+	LCVector3D pos(0,0,0) ;
 
-	//if no steps have been found, then put one step at the center of the cell :
-	if (vec.size() == 0)
+	for ( const auto& step : vec )
 	{
-		streamlog_out(MESSAGE) << "no Steps in hit" << std::endl ;
-		//		vec.push_back(StepAndCharge(LCVector3D(0,0,0))) ;
+		totalLength += step.stepLength ;
+		pos += step.step * step.stepLength ;
+		time = std::min( time , step.time ) ;
 	}
+	pos /= totalLength ;
+
+	totalLength = static_cast<float>( (vec.front().step - vec.back().step).mag() + 0.5f*(vec.front().stepLength + vec.back().stepLength) ) ;
+
+	vec.clear() ;
+	vec.push_back( StepAndCharge(pos , totalLength , time) ) ;
 }
 
 
@@ -271,37 +297,13 @@ void SimDigitalGeomCellIdPROTO::processGeometry(SimCalorimeterHit* hit)
 	_hitPosition = hit->getPosition() ;
 }
 
-std::vector<StepAndCharge> SimDigitalGeomCellId::decode(SimCalorimeterHit* hit)
+std::vector<StepAndCharge> SimDigitalGeomCellId::decode(SimCalorimeterHit* hit , bool link)
 {
 	this->processGeometry(hit) ;
 
 	std::vector<StepAndCharge> stepsInIJZcoord ;
 
-	this->createStepAndChargeVec(hit , stepsInIJZcoord) ;
-
-	fillDebugTupleGeometryHit() ;
-	fillDebugTupleGeometryStep(hit , stepsInIJZcoord) ;
-
-	return stepsInIJZcoord ;
-}
-
-std::vector<StepAndCharge> SimDigitalGeomCellId::decode(SimCalorimeterHit* hit , const std::map<dd4hep::long64, std::vector<LCGenericObject*> >& map)
-{
-	this->processGeometry(hit) ;
-
-	dd4hep::long64 id = hit->getCellID0() ; //need to change in future (SDHCALSim only write cellID0 in generic object)
-
-	std::vector<StepAndCharge> stepsInIJZcoord ;
-
-	const auto it = map.find(id) ;
-
-	if ( it == map.end() )
-	{
-		std::cout << "ERROR : Hit collection and Generic collection doesn't match" << std::endl ;
-		throw ;
-	}
-
-	this->createStepAndChargeVec(hit , it->second , stepsInIJZcoord) ;
+	this->createStepAndChargeVec(hit , stepsInIJZcoord , link) ;
 
 	fillDebugTupleGeometryHit() ;
 	fillDebugTupleGeometryStep(hit , stepsInIJZcoord) ;
@@ -487,20 +489,17 @@ float SimDigitalGeomCellIdLCGEO::getCellSize()
 	float cellSize = 0.f ;
 	const double CM2MM = 10.0 ;
 
+	if ( _cellSize > 0.0f )
+		return _cellSize ;
+
 	if ( _caloData != nullptr )
 	{
-		if ( _cellSize > 0.0f )
-		{
-			cellSize = _cellSize ;
-		}
-		else
-		{
-			const std::vector<dd4hep::rec::LayeredCalorimeterStruct::Layer>& hcalBarrelLayers = _caloData->layers ;
-			cellSize = hcalBarrelLayers[_trueLayer].cellSize0 * CM2MM ;
-		}
+		const std::vector<dd4hep::rec::LayeredCalorimeterStruct::Layer>& hcalBarrelLayers = _caloData->layers ;
+		cellSize = hcalBarrelLayers[_trueLayer].cellSize0 * CM2MM ;
 	}
 
-	//streamlog_out( MESSAGE ) << "cellSize: " << cellSize << endl;
+	if ( cellSize < std::numeric_limits<float>::epsilon() )
+		streamlog_out( WARNING ) << "Cell Size is 0" << std::endl ;
 
 	return cellSize ;
 }

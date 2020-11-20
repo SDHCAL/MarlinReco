@@ -22,8 +22,13 @@ namespace isolep{
 
   Int_t getMCSerial(MCParticle *mcPart, LCCollection *colMCP);
   //MCParticle* getLinkedMCParticle(ReconstructedParticle *recPart, LCCollection *colMCTL, Double_t &weight, Int_t &nMCTL);
+  MCParticle *getMCParticle(ReconstructedParticle *recPart, LCCollection *colMCTL);
+  MCParticle *getMCParticle(ReconstructedParticle *recPart, LCCollection *colMCTL, Double_t &weight);
+  MCParticle *getMCParticle(ReconstructedParticle *recPart, LCCollection *colMCTL, Double_t &weight, Int_t &nMCTL);
   Int_t getLinkedMCParticle(ReconstructedParticle *recPart, LCCollection *colMCTL, Double_t &weight, Int_t &nMCTL);
   Int_t getOriginalPDG(MCParticle *mcPart, Bool_t iHiggs = 0);
+  Int_t getOriginalPDGForIsoLep(MCParticle *mcPart, LCCollection *colMC);
+  Int_t getOriginalPDGForIsoLep(MCParticle *mcPart);
   Int_t getOriginalSerial(MCParticle *mcPart, LCCollection *colMCP, Bool_t iHiggs = 0);
   Int_t getOriginalSerial(ReconstructedParticle *recPart, LCCollection *colMCTL, LCCollection *colMCP, Bool_t iHiggs = 0);
   Int_t getOriginalSerialForZHH(MCParticle *mcPart, LCCollection *colMCP);
@@ -42,6 +47,8 @@ namespace isolep{
   void getConeEnergy(ReconstructedParticle *recPart, LCCollection *colPFO, Double_t cosCone, Bool_t woFSR, Double_t coneEnergy[3], Double_t pFSR[4]);
   void getConeEnergy(ReconstructedParticle *recPart, LCCollection *colPFO, Double_t cosCone, Bool_t woFSR, Double_t coneEnergy[3], Double_t pFSR[4], 
 		     Double_t conCone2, Double_t pCone2[4], Int_t &nConePhoton);
+  void getConeEnergy(ReconstructedParticle *recPart, LCCollection *colPFO, Double_t cosCone,
+		     Double_t coneEnergy[3], Double_t cosCone2, Double_t pCone2[4]);
   TLorentzVector getFSRMomentum(ReconstructedParticle *recPart, LCCollection *colPFO);
   Int_t isSelectedByFastJet( ReconstructedParticle *pfo, LCCollection *colFastJet, Double_t &ratioEPartEJet, Double_t &ratioPTMJet);
   void doPhotonRecovery(ReconstructedParticle *electron, LCCollection *colPFO, ReconstructedParticleImpl *recoElectron, Double_t fCosFSRCut = 0.999);   

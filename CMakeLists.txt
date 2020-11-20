@@ -28,7 +28,7 @@ ENDIF()
 
 # project version
 SET( ${PROJECT_NAME}_VERSION_MAJOR 1 )
-SET( ${PROJECT_NAME}_VERSION_MINOR 25 )
+SET( ${PROJECT_NAME}_VERSION_MINOR 28 )
 SET( ${PROJECT_NAME}_VERSION_PATCH 0 )
 
 
@@ -143,6 +143,8 @@ ADD_MARLINRECO_PKG( ./Analysis/CLICPfoSelector )
 ADD_MARLINRECO_PKG( ./Analysis/EventShapes )
 ADD_MARLINRECO_PKG( ./Analysis/TJjetsPFOAnalysisProcessor )
 ADD_MARLINRECO_PKG( ./Analysis/GammaGammaHadronRemoval )
+ADD_MARLINRECO_PKG( ./Analysis/ErrorFlow )
+ADD_MARLINRECO_PKG( ./Analysis/PhotonEnergyCorrect )
 
 ADD_MARLINRECO_PKG( ./Calibration/AbsCalibration )
 ADD_MARLINRECO_PKG( ./CaloDigi/LDCCaloDigi )
